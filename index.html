@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cue Ball Snooker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c1411;--panel:#131f1a;--panel2:#1a2a23;--line:#24372e;--text:#e8f0ec;--mute:#8ea79a;--felt:#1f7a4d;--felt2:#145a37;--wood:#5a3a22;--gold:#e0b84f;--red:#d94b4b;--r:14px;color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,sans-serif;min-height:100vh}
+a{color:var(--gold)}
+button,input,select,textarea{font:inherit;color:inherit}
+h2{font-size:22px}h3{font-size:18px;margin-bottom:14px}h4{font-size:15px;margin-bottom:12px}
+.mute{color:var(--mute)}.sm{font-size:13px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--panel2);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;text-decoration:none;color:var(--text)}
+.btn:hover{filter:brightness(1.12)}
+.btn.primary{background:var(--felt);border-color:var(--felt)}
+.btn.danger{background:var(--red);border-color:var(--red)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1d1606}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.full{width:100%}
+.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{width:100%;background:#0e1814;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:6px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--felt)}
+option:disabled{color:#666}
+label{display:block;font-size:13px;color:var(--mute);margin-bottom:12px;font-weight:500}
+label.chk{display:flex;align-items:center;gap:10px;color:var(--text);font-size:14px}
+label.chk input{width:18px;height:18px;margin:0;accent-color:var(--felt)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.row2{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.cardhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.cardhead h4{margin:0}
+.empty{text-align:center;color:var(--mute);padding:40px 16px}
+/* header */
+header.top{position:sticky;top:0;z-index:5;background:rgba(12,20,17,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:10px;padding:12px 16px;max-width:1200px;margin:auto}
+.logo{width:32px;height:32px;flex:0 0 auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 16%,#f2f2f2 18%,#cfcfcf 70%,#8f8f8f);box-shadow:0 3px 10px #000a}
+.logo.big{width:56px;height:56px;margin:0 auto 12px}
+.brand{font-weight:800;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{font-size:11px;padding:3px 8px;border-radius:99px;background:var(--panel2);color:var(--gold);text-transform:uppercase;font-weight:700;letter-spacing:.5px}
+nav.tabs{display:flex;gap:6px;padding:0 16px 10px;max-width:1200px;margin:auto;overflow-x:auto}
+nav.tabs button{flex:0 0 auto;background:none;border:none;padding:8px 14px;border-radius:99px;color:var(--mute);font-weight:600;cursor:pointer}
+nav.tabs button.on{background:var(--panel2);color:var(--text)}
+.badge{background:var(--red);color:#fff;border-radius:99px;font-size:11px;padding:1px 6px;margin-left:6px}
+main{max-width:1200px;margin:auto;padding:16px}
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.stat span{font-size:12px;color:var(--mute)}.stat b{display:block;font-size:20px;margin-top:2px;font-variant-numeric:tabular-nums}
+/* tables */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.tcard,.bcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:12px}
+.tcard.run{border-color:#2f8a5c;box-shadow:0 0 0 1px #2f8a5c55,0 10px 26px #0007}
+.thead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.tname{font-weight:700;font-size:17px}.ttype{font-size:13px;color:var(--mute);text-decoration:none}
+.pill{font-size:11px;font-weight:700;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.p-free,.p-ok{background:#1b3a2a;color:#7fd8a6}.p-run,.p-no{background:#4d1c1c;color:#ff9d9d}.p-pend{background:#463812;color:var(--gold)}
+.felt{position:relative;aspect-ratio:2/1;border-radius:12px;background:radial-gradient(ellipse at center,#24915b 0%,var(--felt) 45%,var(--felt2) 100%);border:10px solid var(--wood);box-shadow:inset 0 0 22px #0008,0 2px 0 #3a2414;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px}
+.felt::before{content:"";position:absolute;inset:-8px;pointer-events:none;background-image:radial-gradient(circle,#050505 52%,transparent 58%),radial-gradient(circle,#050505 52%,transparent 58%),radial-gradient(circle,#050505 52%,transparent 58%),radial-gradient(circle,#050505 52%,transparent 58%),radial-gradient(circle,#050505 52%,transparent 58%),radial-gradient(circle,#050505 52%,transparent 58%);background-size:15px 15px;background-repeat:no-repeat;background-position:0 0,50% 0,100% 0,0 100%,50% 100%,100% 100%}
+.timer{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;text-shadow:0 2px 6px #0009}
+.bill{font-size:16px;color:var(--gold);font-weight:700;text-shadow:0 1px 4px #0009}
+.meta{font-size:12px;color:#e2f3ea;opacity:.85}
+.ball{width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d0d0d0 70%,#999);box-shadow:2px 3px 5px #0007}
+.idle{font-size:12px;color:#cfe9db;opacity:.7;margin-top:6px}
+.resv{font-size:12px;color:var(--gold);background:#2a2410;border-radius:8px;padding:6px 10px}
+/* bookings */
+.blist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.rows>div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.rows>div:last-child{border-bottom:0}.rows span{color:var(--mute)}.rows b{text-align:right}
+.note{font-size:13px;color:var(--mute);font-style:italic}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.toolbar input{width:auto;margin:0;padding:7px 10px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px;gap:2px;max-width:100%;overflow-x:auto}
+.seg button{background:none;border:none;padding:7px 14px;border-radius:99px;color:var(--mute);font-weight:600;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--felt);color:#fff}
+.seg.full{display:flex;margin-bottom:16px}.seg.full button{flex:1}
+/* list table */
+.scroll{overflow-x:auto}
+table.list{width:100%;border-collapse:collapse;font-size:14px}
+table.list th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+table.list th,table.list td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+table.list td.num,table.list th.num{text-align:right;font-variant-numeric:tabular-nums}
+.linkbox{display:flex;gap:8px;align-items:center}.linkbox input{margin:0}
+/* modal */
+.ov{position:fixed;inset:0;background:#000b;display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:440px;max-height:92vh;overflow:auto;padding:18px}
+@media(min-width:600px){.ov{align-items:center;padding:16px}.modal{border-radius:18px}}
+.mact{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center;margin-top:4px}
+.total{display:flex;justify-content:space-between;align-items:center;font-size:16px;margin:4px 0 16px}.total b{color:var(--gold);font-size:26px}
+pre.msg{white-space:pre-wrap;background:#0e1814;border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 Inter,sans-serif;margin-bottom:14px}
+.shot{width:100%;border-radius:10px;margin-bottom:12px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:var(--felt);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;z-index:99;transition:.25s;max-width:90vw;text-align:center;box-shadow:0 8px 24px #0008}
+.toast.err{background:var(--red)}.toast.show{opacity:1;transform:translate(-50%,0)}
+/* login + booking */
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.login{width:100%;max-width:360px;text-align:center}.login form{text-align:left;margin-top:4px}
+.login p{margin:4px 0 18px}
+.demo{font-size:12px;color:var(--gold);margin-top:12px!important}
+.link{display:inline-block;margin-top:14px;font-size:14px}
+.bookwrap{max-width:560px;margin:auto;padding:24px 16px 40px}
+.hero{text-align:center;padding:16px 0 22px}.hero h1{font-size:26px}.hero p{color:var(--mute)}
+.est{display:flex;justify-content:space-between;align-items:center;background:#0e1814;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}.est b{color:var(--gold);font-size:18px}
+.pay{background:#2a2410;border:1px solid #4a3c14;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:14px}.pay b{font-size:18px;color:var(--gold);display:block}
+.foot{text-align:center;color:var(--mute);font-size:13px;margin-top:16px}
+.ok-ico{width:56px;height:56px;border-radius:50%;background:var(--felt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px}
+</style>
+</head>
+<body>
+<div id="app"><div class="center"><div class="empty">Loading…</div></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* =====================================================================
+   CUE BALL SNOOKER — POS + Online Booking
+   ---------------------------------------------------------------------
+   SETUP: Firebase project ki config yahan paste karein.
+   Agar apiKey khali ho to app DEMO MODE mein chalti hai (browser storage,
+   passwords: admin123 / staff123).
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDbmnei0HNB3GtdPJBZMxodjwJ7aFG5moA",
+  authDomain: "cue-ball-snooker-37e91.firebaseapp.com",
+  databaseURL: "https://cue-ball-snooker-37e91-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "cue-ball-snooker-37e91",
+  appId: "1:673501388407:web:c210fa155806e9552cb072"
+};
+const ADMIN_EMAIL = "admin@cueball.app";   // Firebase Auth mein yeh 2 users banayein
+const STAFF_EMAIL = "staff@cueball.app";
+const CURRENCY = "Rs";
+/* ===================================================================== */
+
+const DEMO = !FIREBASE_CONFIG.apiKey;
+const DEF = {clubName:'Cue Ball Snooker', whatsapp:'', openTime:'12:00', closeTime:'03:00', dayStartHour:6, roundTo:10,
+  payTitle:'', payNumber:'', payBank:'', bookingNote:'', requireScreenshot:true, bookingOpen:true};
+const S = {settings:{...DEF}, tables:{}, bookings:{}, sessions:{}, role:null, view:'tables', btab:'pending', unsub:[], mode:'pos'};
+let DB, AUTH;
+
+/* ---------------- data layer ---------------- */
+if (!DEMO) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const fdb = firebase.database(), fa = firebase.auth();
+  let off = 0; fdb.ref('.info/serverTimeOffset').on('value', s => off = s.val() || 0);
+  const warn = p => e => console.warn(p, e.message);
+  DB = {
+    on(p, cb){ const r = fdb.ref(p), h = s => cb(s.val()); r.on('value', h, warn(p)); return () => r.off('value', h); },
+    onRange(p, c, f, t, cb){ const q = fdb.ref(p).orderByChild(c).startAt(f).endAt(t), h = s => cb(s.val()); q.on('value', h, warn(p)); return () => q.off('value', h); },
+    get: p => fdb.ref(p).get().then(s => s.val()),
+    getRange: (p, c, f, t) => fdb.ref(p).orderByChild(c).startAt(f).endAt(t).get().then(s => s.val()),
+    set: (p, v) => fdb.ref(p).set(v),
+    update: (p, o) => fdb.ref(p || '/').update(o),
+    push: (p, v) => { const r = fdb.ref(p).push(); return r.set(v).then(() => r.key); },
+    remove: p => fdb.ref(p).remove(),
+    key: () => fdb.ref().push().key,
+    now: () => Date.now() + off
+  };
+  const roleOf = u => { if (!u) return null; const e = (u.email || '').toLowerCase();
+    return e === ADMIN_EMAIL.toLowerCase() ? 'admin' : e === STAFF_EMAIL.toLowerCase() ? 'staff' : null; };
+  AUTH = {
+    watch: cb => fa.onAuthStateChanged(u => cb(roleOf(u))),
+    login: (role, pw) => fa.signInWithEmailAndPassword(role === 'admin' ? ADMIN_EMAIL : STAFF_EMAIL, pw),
+    logout: () => fa.signOut()
+  };
+} else {
+  const LS = 'cueball_demo_v1';
+  const clone = v => v == null ? null : JSON.parse(JSON.stringify(v));
+  const seed = () => ({settings:{...DEF}, tables:{
+    t1:{name:'Table 1',type:'Snooker',rate:600,order:1,status:'free'},
+    t2:{name:'Table 2',type:'Snooker',rate:600,order:2,status:'free'},
+    t3:{name:'Table 3',type:'Snooker',rate:600,order:3,status:'free'},
+    t4:{name:'Pool 1',type:'8-Ball Pool',rate:400,order:4,status:'free'}}});
+  let mem = null; try { mem = JSON.parse(localStorage.getItem(LS)); } catch(e) {}
+  if (!mem) mem = seed();
+  const L = [];
+  const parts = p => String(p).split('/').filter(Boolean);
+  const g = p => { let o = mem; for (const k of parts(p)) { if (o == null || typeof o !== 'object') return null; o = o[k]; } return o === undefined ? null : clone(o); };
+  const s = (p, v) => { const ks = parts(p); if (!ks.length) { mem = clone(v) || {}; return; } let o = mem;
+    for (let i = 0; i < ks.length - 1; i++) { if (o[ks[i]] == null || typeof o[ks[i]] !== 'object') o[ks[i]] = {}; o = o[ks[i]]; }
+    const last = ks[ks.length - 1]; if (v == null) delete o[last]; else o[last] = clone(v); };
+  const filt = (v, f) => { if (!f || !v) return v; const out = {}; for (const k in v) { const x = v[k] && v[k][f.child]; if (x >= f.from && x <= f.to) out[k] = v[k]; } return out; };
+  const fire = () => L.forEach(l => l.cb(filt(g(l.path), l.f)));
+  const emit = () => { try { localStorage.setItem(LS, JSON.stringify(mem)); } catch(e) {} fire(); };
+  window.addEventListener('storage', e => { if (e.key === LS) { try { mem = JSON.parse(e.newValue) || mem; } catch(_) {} fire(); } });
+  const sub = l => { L.push(l); setTimeout(() => l.cb(filt(g(l.path), l.f))); return () => { const i = L.indexOf(l); if (i >= 0) L.splice(i, 1); }; };
+  DB = {
+    on: (path, cb) => sub({path, cb}),
+    onRange: (path, child, from, to, cb) => sub({path, cb, f:{child, from, to}}),
+    get: async p => g(p),
+    getRange: async (p, child, from, to) => filt(g(p), {child, from, to}),
+    set: async (p, v) => { s(p, v); emit(); },
+    update: async (p, o) => { for (const k in o) s(p + '/' + k, o[k]); emit(); },
+    push: async (p, v) => { const k = DB.key(); s(p + '/' + k, v); emit(); return k; },
+    remove: async p => { s(p, null); emit(); },
+    key: () => '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    now: () => Date.now()
+  };
+  let cur = null, cbs = []; try { cur = sessionStorage.getItem('cb_role'); } catch(e) {}
+  AUTH = {
+    watch(cb){ cbs.push(cb); setTimeout(() => cb(cur)); },
+    async login(role, pw){ if (pw !== (role === 'admin' ? 'admin123' : 'staff123')) throw {code:'auth/wrong-password'};
+      cur = role; try { sessionStorage.setItem('cb_role', role); } catch(e) {} cbs.forEach(f => f(cur)); },
+    async logout(){ cur = null; try { sessionStorage.removeItem('cb_role'); } catch(e) {} cbs.forEach(f => f(null)); }
+  };
+}
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const money = n => CURRENCY + ' ' + Math.round(+n || 0).toLocaleString('en-US');
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const isAdmin = () => S.role === 'admin';
+const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const addDays = (s, n) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
+const bizDate = ts => ymd(new Date(ts - (+S.settings.dayStartHour || 0) * 3600000));
+const prettyDate = s => new Date(s + 'T00:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'});
+const fmtTime = ts => new Date(ts).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+const fmtDur = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60); };
+const hm12 = s => { let [h, m] = String(s).split(':').map(Number); h %= 24; return ((h % 12) || 12) + ':' + pad(m) + (h >= 12 ? ' PM' : ' AM'); };
+const hhmm2m = s => { const [h, m] = String(s || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
+function tmin(s){ let t = hhmm2m(s); const o = hhmm2m(S.settings.openTime), c = hhmm2m(S.settings.closeTime); if (c <= o && t < o) t += 1440; return t; }
+const overlap = (a, ah, b, bh) => a < b + bh * 60 && b < a + ah * 60;
+const bookTs = b => new Date(b.date + 'T00:00:00').getTime() + tmin(b.time) * 60000;
+function calcBill(ms, rate){ const mins = Math.max(1, Math.ceil(ms / 60000)); const raw = mins * (+rate || 0) / 60; const r = +S.settings.roundTo || 0;
+  return {mins, amount: r > 0 ? Math.ceil(raw / r) * r : Math.round(raw)}; }
+function waNum(p){ let d = String(p).replace(/\D/g, ''); if (d.startsWith('0')) d = '92' + d.slice(1); else if (d.length === 10 && d[0] === '3') d = '92' + d; return d; }
+const bookUrl = () => location.href.split('#')[0] + '#/book';
+const sortedTables = () => Object.entries(S.tables || {}).map(([id, t]) => ({id, ...t}))
+  .sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(String(b.name), undefined, {numeric:true}));
+function toast(m, err){ const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = m; document.body.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10); setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2800); }
+function openModal(html){ closeModal(); const o = document.createElement('div'); o.className = 'ov'; o.id = 'ov';
+  o.innerHTML = `<div class="modal">${html}</div>`; o.onclick = e => { if (e.target === o) closeModal(); }; document.body.appendChild(o);
+  const f = o.querySelector('[autofocus]'); if (f) setTimeout(() => f.focus(), 60); return o; }
+function closeModal(){ const o = $('#ov'); if (o) o.remove(); }
+function copyText(t){ (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Link copied')).catch(() => prompt('Copy this link:', t)); }
+function authErr(e){ const c = (e && e.code) || ''; if (/wrong-password|invalid-credential|invalid-login|user-not-found/.test(c)) return 'Wrong password';
+  if (/too-many/.test(c)) return 'Too many attempts. Try again later.'; if (/network/.test(c)) return 'No internet connection'; return (e && e.message) || 'Login failed'; }
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  if (!DEMO && typeof firebase === 'undefined') { $('#app').innerHTML = `<div class="center"><div class="empty">Could not connect. Check internet and refresh.</div></div>`; return; }
+  try { const r = await fetch('config.json?t=' + Date.now(), {cache:'no-store'}); if (r.ok) { const c = await r.json();
+    if (c && c.active === false) { $('#app').innerHTML = `<div class="center"><div class="card login"><div class="logo big"></div><h3>Service paused</h3><p class="mute">${esc(c.message || 'Please contact the administrator.')}</p></div></div>`; return; } } } catch(e) {}
+  window.addEventListener('hashchange', () => location.reload());
+  S.mode = location.hash.startsWith('#/book') ? 'book' : 'pos';
+  DB.on('settings', v => { S.settings = {...DEF, ...(v || {})}; document.title = S.settings.clubName + (S.mode === 'book' ? ' — Book a Table' : ''); rerender(); });
+  if (S.mode === 'book') startBook();
+  else AUTH.watch(r => { S.role = r; if (r) startPos(); else { stopPos(); renderLogin(); } });
+  setInterval(tick, 1000);
+}
+function tick(){
+  const now = DB.now();
+  document.querySelectorAll('.timer[data-start]').forEach(el => el.textContent = fmtDur(now - +el.dataset.start));
+  document.querySelectorAll('.bill[data-start]').forEach(el => el.textContent = money(calcBill(now - +el.dataset.start, +el.dataset.rate).amount));
+  if (S.mode === 'pos' && S.role && S.today && bizDate(now) !== S.today) startPos();
+}
+
+/* ---------------- login ---------------- */
+function renderLogin(){
+  S.loginRole = S.loginRole || 'staff';
+  $('#app').innerHTML = `<div class="center"><div class="card login"><div class="logo big"></div>
+    <h2 class="clubName">${esc(S.settings.clubName)}</h2><p class="mute">Staff &amp; Admin login</p>
+    <div class="seg full">${['staff','admin'].map(r => `<button class="${S.loginRole === r ? 'on' : ''}" onclick="S.loginRole='${r}';renderLogin()">${cap(r)}</button>`).join('')}</div>
+    <form id="lf"><label>Password<input type="password" id="l_pw" autocomplete="current-password" required></label>
+    <button class="btn primary full" id="l_btn">Login as ${cap(S.loginRole)}</button></form>
+    ${DEMO ? `<p class="demo">Demo mode — passwords: admin123 / staff123</p>` : ''}
+    <a class="link" href="#/book">Customer booking page →</a></div></div>`;
+  $('#l_pw').focus();
+  $('#lf').onsubmit = async e => { e.preventDefault(); const b = $('#l_btn'); b.disabled = true;
+    try { await AUTH.login(S.loginRole, $('#l_pw').value); } catch(err) { toast(authErr(err), 1); b.disabled = false; } };
+}
+function doLogout(){ if (confirm('Logout?')) AUTH.logout(); }
+
+/* ---------------- POS shell ---------------- */
+function stopPos(){ S.unsub.forEach(f => { try { f(); } catch(e) {} }); S.unsub = []; }
+function startPos(){
+  stopPos();
+  const today = bizDate(DB.now()); S.today = today;
+  if (S.view === 'settings' && !isAdmin()) S.view = 'tables';
+  S.unsub.push(DB.on('tables', v => { S.tables = v || {}; rerender(); }));
+  S.unsub.push(DB.onRange('bookings', 'date', addDays(today, -7), '9999-12-31', v => { S.bookings = v || {}; rerender(); }));
+  S.unsub.push(DB.onRange('sessions', 'date', today, today, v => { S.sessions = v || {}; rerender(); if (S.view === 'sales') loadSales(); }));
+  renderShell();
+}
+const pendingCount = () => Object.values(S.bookings || {}).filter(b => b.status === 'pending').length;
+function renderShell(){
+  const n = pendingCount();
+  const tabs = [['tables','Tables'],['bookings','Bookings'],['sales','Sales']]; if (isAdmin()) tabs.push(['settings','Settings']);
+  $('#app').innerHTML = `<header class="top"><div class="hrow"><div class="logo"></div><div class="brand clubName">${esc(S.settings.clubName)}</div>
+    <span class="chip">${S.role}</span><div style="flex:1"></div><button class="btn sm ghost" onclick="doLogout()">Logout</button></div>
+    <nav class="tabs">${tabs.map(([k, l]) => `<button class="${S.view === k ? 'on' : ''}" onclick="setView('${k}')">${l}${k === 'bookings' ? `<span class="badge" id="pendBadge" ${n ? '' : 'hidden'}>${n}</span>` : ''}</button>`).join('')}</nav>
+    </header><main id="view"></main>`;
+  renderView();
+}
+function setView(v){ S.view = v; renderShell(); }
+function renderView(){
+  const el = $('#view'); if (!el) return;
+  if (S.view === 'tables') el.innerHTML = viewTables();
+  else if (S.view === 'bookings') el.innerHTML = viewBookings();
+  else if (S.view === 'sales') { el.innerHTML = viewSales(); loadSales(); }
+  else if (S.view === 'settings') { el.innerHTML = viewSettings(); renderTablesAdmin(); }
+}
+function rerender(){
+  document.querySelectorAll('.clubName').forEach(e => e.textContent = S.settings.clubName);
+  if (S.mode !== 'pos' || !S.role || !$('#view')) return;
+  const b = $('#pendBadge'); if (b) { const n = pendingCount(); b.textContent = n; b.hidden = !n; }
+  if (S.view === 'tables' || S.view === 'bookings') renderView();
+  else if (S.view === 'settings') renderTablesAdmin();
+}
+
+/* ---------------- live tables ---------------- */
+function nextBooking(tid){
+  const now = DB.now(), today = bizDate(now);
+  return Object.values(S.bookings || {}).filter(b => b.status === 'approved' && b.tableId === tid && b.date === today && bookTs(b) + b.hours * 3600000 > now)
+    .sort((a, b) => bookTs(a) - bookTs(b))[0];
+}
+function viewTables(){
+  const list = sortedTables();
+  if (!list.length) return `<div class="empty">No tables yet.${isAdmin() ? ' Add tables from <b>Settings</b>.' : ''}</div>`;
+  const ses = Object.values(S.sessions || {});
+  const run = list.filter(t => t.status === 'running').length;
+  return `<div class="stats">
+    <div class="stat"><span>In play</span><b>${run} / ${list.length}</b></div>
+    <div class="stat"><span>Today's sales</span><b>${money(ses.reduce((a, s) => a + (+s.amount || 0), 0))}</b></div>
+    <div class="stat"><span>Games today</span><b>${ses.length}</b></div>
+    <div class="stat"><span>Pending bookings</span><b>${pendingCount()}</b></div></div>
+    <div class="grid">${list.map(tCard).join('')}</div>`;
+}
+function tCard(t){
+  const run = t.status === 'running' && t.start, now = DB.now(), nb = nextBooking(t.id);
+  return `<div class="tcard ${run ? 'run' : ''}">
+    <div class="thead"><div><div class="tname">${esc(t.name)}</div><div class="ttype">${esc(t.type)} · ${money(t.rate)}/hr</div></div>
+    <span class="pill ${run ? 'p-run' : 'p-free'}">${run ? 'In play' : 'Available'}</span></div>
+    <div class="felt">${run ? `<div class="timer" data-start="${t.start}">${fmtDur(now - t.start)}</div>
+      <div class="bill" data-start="${t.start}" data-rate="${t.rate}">${money(calcBill(now - t.start, t.rate).amount)}</div>
+      <div class="meta">${t.customer ? esc(t.customer) + ' · ' : ''}since ${fmtTime(t.start)}</div>` : `<div class="ball"></div><div class="idle">Ready</div>`}</div>
+    ${nb ? `<div class="resv">Reserved ${hm12(nb.time)} · ${esc(nb.name)} (${nb.hours} hr)</div>` : ''}
+    ${run ? `<button class="btn danger full" onclick="stopTable('${t.id}')">Stop &amp; Bill</button>` : `<button class="btn primary full" onclick="startTable('${t.id}')">Start</button>`}
+  </div>`;
+}
+function startTable(id){
+  const t = S.tables[id]; if (!t) return;
+  openModal(`<h3>Start ${esc(t.name)}</h3>
+    <label>Customer name (optional)<input id="m_cust" placeholder="e.g. Ali" maxlength="30" autofocus></label>
+    <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="m_go">Start timer</button></div>`);
+  $('#m_go').onclick = async () => { const btn = $('#m_go'); btn.disabled = true;
+    try { await DB.update('tables/' + id, {status:'running', start:DB.now(), customer:$('#m_cust').value.trim() || null, startedBy:S.role}); closeModal(); toast(t.name + ' started'); }
+    catch(e) { toast(e.message, 1); btn.disabled = false; } };
+}
+const freeTable = id => DB.update('tables/' + id, {status:'free', start:null, customer:null, startedBy:null});
+function stopTable(id){
+  const t = S.tables[id]; if (!t || t.status !== 'running') return;
+  const end = DB.now(), {mins, amount} = calcBill(end - t.start, t.rate);
+  openModal(`<h3>Bill — ${esc(t.name)}</h3>
+    <div class="rows" style="margin-bottom:14px">
+      <div><span>Customer</span><b>${esc(t.customer || '—')}</b></div>
+      <div><span>Time</span><b>${fmtTime(t.start)} – ${fmtTime(end)}</b></div>
+      <div><span>Duration</span><b>${mins} min</b></div>
+      <div><span>Rate</span><b>${money(t.rate)}/hr</b></div>
+      <div><span>Bill</span><b>${money(amount)}</b></div></div>
+    <div class="row2"><label>Discount<input id="m_disc" type="number" min="0" value="0" inputmode="numeric"></label>
+    <label>Payment<select id="m_meth"><option>Cash</option><option>Online</option></select></label></div>
+    <div class="total"><span>Total</span><b id="m_tot">${money(amount)}</b></div>
+    <div class="mact">${isAdmin() ? `<button class="btn ghost sm" id="m_void">Void (no charge)</button>` : ''}
+      <button class="btn" onclick="closeModal()">Back</button><button class="btn primary" id="m_pay">Payment received</button></div>`);
+  const tot = () => Math.max(0, amount - (+$('#m_disc').value || 0));
+  $('#m_disc').oninput = () => $('#m_tot').textContent = money(tot());
+  $('#m_pay').onclick = async () => { const btn = $('#m_pay'); btn.disabled = true;
+    const total = tot(), disc = +$('#m_disc').value || 0, method = $('#m_meth').value;
+    try {
+      await DB.push('sessions', {tableId:id, table:t.name, type:t.type, customer:t.customer || '', start:t.start, end, minutes:mins, rate:t.rate,
+        bill:amount, discount:disc, amount:total, method, by:S.role, date:bizDate(t.start)});
+      await freeTable(id); closeModal(); toast('Saved ' + money(total));
+    } catch(e) { toast(e.message, 1); btn.disabled = false; } };
+  if ($('#m_void')) $('#m_void').onclick = async () => { if (confirm('Clear this table without saving a sale?')) { await freeTable(id); closeModal(); toast('Table cleared'); } };
+}
+
+/* ---------------- bookings (staff side) ---------------- */
+const whenKey = b => b.date + pad(tmin(b.time)).padStart(5, '0');
+function viewBookings(){
+  const today = bizDate(DB.now());
+  const all = Object.entries(S.bookings || {}).map(([id, b]) => ({id, ...b}));
+  const up = b => b.status === 'approved' && b.date >= today;
+  const L = {
+    pending: all.filter(b => b.status === 'pending').sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)),
+    upcoming: all.filter(up).sort((a, b) => whenKey(a).localeCompare(whenKey(b))),
+    past: all.filter(b => b.status !== 'pending' && !up(b)).sort((a, b) => whenKey(b).localeCompare(whenKey(a)))
+  };
+  const t = S.btab;
+  return `<div class="toolbar"><div class="seg">${['pending','upcoming','past'].map(k => `<button class="${t === k ? 'on' : ''}" onclick="S.btab='${k}';renderView()">${cap(k)} (${L[k].length})</button>`).join('')}</div>
+    <div style="flex:1"></div><button class="btn sm" onclick="copyText(bookUrl())">Copy booking link</button></div>
+    ${L[t].length ? `<div class="blist">${L[t].map(bCard).join('')}</div>` : `<div class="empty">${t === 'pending' ? 'No pending requests.' : 'Nothing here.'}</div>`}`;
+}
+function bCard(b){
+  const st = {pending:['p-pend','Pending'], approved:['p-ok','Approved'], rejected:['p-no','Rejected']}[b.status] || ['p-pend', b.status];
+  return `<div class="bcard">
+    <div class="thead"><div><div class="tname">${esc(b.name)}</div><a class="ttype" href="tel:${esc(b.phone)}">${esc(b.phone)}</a></div><span class="pill ${st[0]}">${st[1]}</span></div>
+    <div class="rows"><div><span>Date</span><b>${prettyDate(b.date)}</b></div><div><span>Time</span><b>${hm12(b.time)} · ${b.hours} hr</b></div>
+    <div><span>Table</span><b>${esc(b.table)}</b></div><div><span>Amount</span><b>${money(b.amount)}</b></div></div>
+    ${b.note ? `<div class="note">“${esc(b.note)}”</div>` : ''}
+    <div class="mact">${b.hasShot ? `<button class="btn sm" onclick="viewShot('${b.id}')">Payment proof</button>` : `<span class="mute sm">No screenshot</span>`}
+      <div style="flex:1"></div>
+      ${isAdmin() ? `<button class="btn sm ghost" onclick="delBooking('${b.id}')">Delete</button>` : ''}
+      ${b.status === 'pending' ? `<button class="btn sm danger" onclick="decide('${b.id}','rejected')">Reject</button><button class="btn sm primary" onclick="decide('${b.id}','approved')">Approve</button>`
+        : `<button class="btn sm" onclick="waModal('${b.id}')">WhatsApp</button>`}</div></div>`;
+}
+function findClash(id){
+  const b = S.bookings[id];
+  return Object.entries(S.bookings || {}).map(([k, x]) => ({id:k, ...x})).find(x => x.id !== id && x.status === 'approved' && x.date === b.date
+    && x.tableId === b.tableId && overlap(tmin(x.time), x.hours, tmin(b.time), b.hours));
+}
+async function decide(id, st){
+  const b = S.bookings[id]; if (!b) return;
+  if (st === 'approved') { const c = findClash(id); if (c && !confirm(`${c.table} is already booked for ${c.name} at ${hm12(c.time)} on this date. Approve anyway?`)) return; }
+  else if (!confirm('Reject this booking?')) return;
+  try {
+    await DB.update('', {[`bookings/${id}/status`]:st, [`bookings/${id}/handledBy`]:S.role,
+      [`slots/${b.date}/${id}`]: st === 'approved' ? {tableId:b.tableId, time:b.time, hours:b.hours} : null});
+    waModal(id, st);
+  } catch(e) { toast(e.message, 1); }
+}
+function waMsg(b, st){
+  const c = S.settings.clubName;
+  if (st === 'approved') return `Assalam o Alaikum ${b.name}! ✅\nYour booking at *${c}* is CONFIRMED.\n\n📅 ${prettyDate(b.date)}\n⏰ ${hm12(b.time)} (${b.hours} hr)\n🎱 ${b.table}\n💰 ${money(b.amount)}\n\nPlease arrive 10 minutes early. See you!`;
+  if (st === 'rejected') return `Assalam o Alaikum ${b.name},\nSorry, we could not confirm your booking at *${c}* for ${prettyDate(b.date)}, ${hm12(b.time)}.\nPlease contact us to choose another slot.`;
+  return `Assalam o Alaikum ${b.name}, we have received your booking request at *${c}* and will confirm shortly.`;
+}
+function waModal(id, st){
+  const b = S.bookings[id]; if (!b) return; st = st || b.status;
+  const msg = waMsg(b, st), href = `https://wa.me/${waNum(b.phone)}?text=${encodeURIComponent(msg)}`;
+  openModal(`<h3>WhatsApp ${esc(b.name)}</h3><pre class="msg">${esc(msg)}</pre>
+    <div class="mact"><button class="btn" onclick="closeModal()">Close</button>
+    <a class="btn primary" href="${href}" target="_blank" rel="noopener" onclick="setTimeout(closeModal,300)">Open WhatsApp</a></div>`);
+}
+async function viewShot(id){
+  openModal(`<h3>Payment proof</h3><div id="shotBox" class="empty">Loading…</div><div class="mact"><button class="btn" onclick="closeModal()">Close</button></div>`);
+  try { const src = await DB.get('shots/' + id); const box = $('#shotBox'); if (!box) return;
+    box.outerHTML = src ? `<img class="shot" src="${esc(src)}" alt="Payment screenshot">` : `<div class="empty">Screenshot not found.</div>`;
+  } catch(e) { toast(e.message, 1); }
+}
+async function delBooking(id){
+  const b = S.bookings[id]; if (!b || !confirm(`Delete booking of ${b.name}?`)) return;
+  try { await DB.update('', {['bookings/' + id]:null, ['shots/' + id]:null, [`slots/${b.date}/${id}`]:null}); toast('Deleted'); } catch(e) { toast(e.message, 1); }
+}
+
+/* ---------------- sales ---------------- */
+function viewSales(){
+  const today = bizDate(DB.now());
+  if (!isAdmin() || !S.from) { S.from = today; S.to = today; }
+  return `<div class="toolbar">${isAdmin() ? `<input type="date" id="f_from" value="${S.from}"><span class="mute">to</span><input type="date" id="f_to" value="${S.to}">
+    <button class="btn sm primary" onclick="S.from=$('#f_from').value;S.to=$('#f_to').value;loadSales()">Show</button>` : `<b>Today · ${prettyDate(today)}</b>`}
+    <div style="flex:1"></div><button class="btn sm" onclick="exportCSV()">Export CSV</button></div><div id="salesBody"><div class="empty">Loading…</div></div>`;
+}
+async function loadSales(){
+  const from = S.from, to = S.to; let v;
+  try { v = await DB.getRange('sessions', 'date', from, to); } catch(e) { const el = $('#salesBody'); if (el) el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  if (from !== S.from || to !== S.to) return;
+  const rows = Object.entries(v || {}).map(([id, r]) => ({id, ...r})).sort((a, b) => b.end - a.end);
+  S.salesRows = rows;
+  const el = $('#salesBody'); if (!el) return;
+  const sum = f => rows.filter(f).reduce((a, r) => a + (+r.amount || 0), 0);
+  const mins = rows.reduce((a, r) => a + (+r.minutes || 0), 0), disc = rows.reduce((a, r) => a + (+r.discount || 0), 0);
+  const byT = {}; rows.forEach(r => { const k = r.table || '?'; byT[k] = byT[k] || {n:0, m:0, a:0}; byT[k].n++; byT[k].m += +r.minutes || 0; byT[k].a += +r.amount || 0; });
+  const multi = from !== to;
+  el.innerHTML = `<div class="stats">
+    <div class="stat"><span>Total</span><b>${money(sum(() => true))}</b></div>
+    <div class="stat"><span>Cash</span><b>${money(sum(r => r.method === 'Cash'))}</b></div>
+    <div class="stat"><span>Online</span><b>${money(sum(r => r.method !== 'Cash'))}</b></div>
+    <div class="stat"><span>Games</span><b>${rows.length}</b></div>
+    <div class="stat"><span>Play time</span><b>${Math.floor(mins / 60)}h ${mins % 60}m</b></div>
+    <div class="stat"><span>Discounts</span><b>${money(disc)}</b></div></div>
+    ${rows.length ? `<div class="card scroll"><h4>By table</h4><table class="list"><thead><tr><th>Table</th><th class="num">Games</th><th class="num">Time</th><th class="num">Amount</th></tr></thead><tbody>
+      ${Object.entries(byT).sort((a, b) => b[1].a - a[1].a).map(([k, x]) => `<tr><td>${esc(k)}</td><td class="num">${x.n}</td><td class="num">${Math.floor(x.m / 60)}h ${x.m % 60}m</td><td class="num">${money(x.a)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="card scroll"><h4>All games</h4><table class="list"><thead><tr>${multi ? '<th>Date</th>' : ''}<th>Table</th><th>Customer</th><th>Time</th><th class="num">Min</th><th class="num">Amount</th><th>Paid</th><th>By</th>${isAdmin() ? '<th></th>' : ''}</tr></thead><tbody>
+      ${rows.map(r => `<tr>${multi ? `<td>${prettyDate(r.date)}</td>` : ''}<td>${esc(r.table)}</td><td>${esc(r.customer || '—')}</td><td>${fmtTime(r.start)} – ${fmtTime(r.end)}</td>
+        <td class="num">${r.minutes}</td><td class="num">${money(r.amount)}${r.discount ? ` <span class="mute sm">(-${r.discount})</span>` : ''}</td><td>${esc(r.method)}</td><td>${esc(r.by)}</td>
+        ${isAdmin() ? `<td><button class="btn sm ghost" onclick="delSession('${r.id}')">✕</button></td>` : ''}</tr>`).join('')}</tbody></table></div>`
+    : `<div class="empty">No sales in this period.</div>`}`;
+}
+async function delSession(id){ if (!confirm('Delete this sale entry?')) return; try { await DB.remove('sessions/' + id); toast('Deleted'); loadSales(); } catch(e) { toast(e.message, 1); } }
+function exportCSV(){
+  const rows = S.salesRows || []; if (!rows.length) return toast('Nothing to export', 1);
+  const head = ['Date','Table','Type','Customer','Start','End','Minutes','Rate/hr','Bill','Discount','Amount','Method','By'];
+  const lines = [head, ...rows.slice().reverse().map(r => [r.date, r.table, r.type, r.customer, fmtTime(r.start), fmtTime(r.end), r.minutes, r.rate, r.bill, r.discount, r.amount, r.method, r.by])]
+    .map(a => a.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(','));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\n')], {type:'text/csv'}));
+  a.download = `cueball_sales_${S.from}_to_${S.to}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------------- settings (admin) ---------------- */
+function viewSettings(){
+  const s = S.settings;
+  return `<div class="card"><h4>Club</h4>
+    <div class="row2"><label>Club name<input id="s_name" value="${esc(s.clubName)}"></label>
+    <label>Club WhatsApp number<input id="s_wa" value="${esc(s.whatsapp)}" placeholder="03xx xxxxxxx"></label></div>
+    <div class="row2"><label>Opening time<input type="time" id="s_open" value="${esc(s.openTime)}"></label><label>Closing time<input type="time" id="s_close" value="${esc(s.closeTime)}"></label></div>
+    <div class="row2"><label>Business day starts at (hour 0–23)<input type="number" id="s_dsh" min="0" max="23" value="${esc(s.dayStartHour)}"></label>
+    <label>Round bill up to nearest (${CURRENCY})<input type="number" id="s_round" min="0" value="${esc(s.roundTo)}"></label></div>
+    <p class="mute sm">Example: business day 6 → games after midnight till 6 AM count in the previous day's sales.</p></div>
+  <div class="card"><h4>Online booking</h4>
+    <label class="chk"><input type="checkbox" id="s_bopen" ${s.bookingOpen ? 'checked' : ''}> Accept online bookings</label>
+    <label class="chk"><input type="checkbox" id="s_req" ${s.requireScreenshot ? 'checked' : ''}> Payment screenshot required</label>
+    <div class="row2"><label>Account title<input id="s_pt" value="${esc(s.payTitle)}"></label><label>Bank / App<input id="s_pb" value="${esc(s.payBank)}" placeholder="JazzCash / Easypaisa / Bank"></label></div>
+    <label>Account / mobile number<input id="s_pn" value="${esc(s.payNumber)}"></label>
+    <label>Note for customers<textarea id="s_note" rows="2">${esc(s.bookingNote)}</textarea></label>
+    <label>Booking page link<div class="linkbox"><input readonly value="${esc(bookUrl())}"><button class="btn sm" onclick="copyText(bookUrl())">Copy</button></div></label>
+    <button class="btn primary" onclick="saveSettings()">Save settings</button></div>
+  <div class="card"><div class="cardhead"><h4>Tables</h4><button class="btn sm primary" onclick="editTable()">+ Add table</button></div><div id="tblAdmin"></div></div>`;
+}
+async function saveSettings(){
+  const v = {clubName:$('#s_name').value.trim() || DEF.clubName, whatsapp:$('#s_wa').value.trim(), openTime:$('#s_open').value || DEF.openTime,
+    closeTime:$('#s_close').value || DEF.closeTime, dayStartHour:Math.min(23, Math.max(0, +$('#s_dsh').value || 0)), roundTo:Math.max(0, +$('#s_round').value || 0),
+    bookingOpen:$('#s_bopen').checked, requireScreenshot:$('#s_req').checked, payTitle:$('#s_pt').value.trim(), payBank:$('#s_pb').value.trim(),
+    payNumber:$('#s_pn').value.trim(), bookingNote:$('#s_note').value.trim()};
+  try { await DB.update('settings', v); toast('Settings saved'); } catch(e) { toast(e.message, 1); }
+}
+function renderTablesAdmin(){
+  const el = $('#tblAdmin'); if (!el) return; const list = sortedTables();
+  el.innerHTML = list.length ? `<div class="scroll"><table class="list"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate/hr</th><th></th></tr></thead><tbody>
+    ${list.map(t => `<tr><td>${esc(t.name)}</td><td>${esc(t.type)}</td><td class="num">${money(t.rate)}</td>
+      <td class="num"><button class="btn sm" onclick="editTable('${t.id}')">Edit</button> <button class="btn sm ghost" onclick="delTable('${t.id}')">Delete</button></td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="empty">No tables yet.</div>`;
+}
+function editTable(id){
+  const t = id ? S.tables[id] : {name:'', type:'Snooker', rate:600};
+  openModal(`<h3>${id ? 'Edit' : 'Add'} table</h3>
+    <label>Name<input id="t_name" value="${esc(t.name)}" placeholder="Table 1" autofocus></label>
+    <label>Type<input id="t_type" value="${esc(t.type)}" list="t_types"><datalist id="t_types"><option>Snooker</option><option>8-Ball Pool</option><option>PS5</option></datalist></label>
+    <label>Rate per hour (${CURRENCY})<input id="t_rate" type="number" min="0" value="${esc(t.rate)}" inputmode="numeric"></label>
+    <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="t_save">Save</button></div>`);
+  $('#t_save').onclick = async () => {
+    const v = {name:$('#t_name').value.trim(), type:$('#t_type').value.trim() || 'Snooker', rate:+$('#t_rate').value || 0};
+    if (!v.name) return toast('Enter a table name', 1);
+    try {
+      if (id) await DB.update('tables/' + id, v);
+      else await DB.push('tables', {...v, status:'free', order:Math.max(0, ...sortedTables().map(x => x.order || 0)) + 1});
+      closeModal(); toast('Saved');
+    } catch(e) { toast(e.message, 1); }
+  };
+}
+async function delTable(id){
+  const t = S.tables[id]; if (!t) return;
+  if (t.status === 'running') return toast('Stop the table first', 1);
+  if (!confirm(`Delete ${t.name}? Old sales stay saved.`)) return;
+  try { await DB.remove('tables/' + id); toast('Deleted'); } catch(e) { toast(e.message, 1); }
+}
+
+/* ---------------- customer booking page ---------------- */
+async function startBook(){
+  try { const [st, tb] = await Promise.all([DB.get('settings'), DB.get('tables')]); S.settings = {...DEF, ...(st || {})}; S.tables = tb || {}; }
+  catch(e) { $('#app').innerHTML = `<div class="center"><div class="empty">Could not load. Check internet and refresh.</div></div>`; return; }
+  renderBook();
+}
+function renderBook(){
+  const s = S.settings, tables = sortedTables(), today = bizDate(DB.now());
+  const hero = `<div class="hero"><div class="logo big"></div><h1 class="clubName">${esc(s.clubName)}</h1><p>Book your table online</p></div>`;
+  if (!s.bookingOpen || !tables.length) {
+    $('#app').innerHTML = `<div class="bookwrap">${hero}<div class="card" style="text-align:center"><p>Online booking is closed right now.</p>
+      ${s.whatsapp ? `<a class="btn gold" style="margin-top:12px" href="https://wa.me/${waNum(s.whatsapp)}" target="_blank" rel="noopener">Contact us on WhatsApp</a>` : ''}</div></div>`; return;
+  }
+  $('#app').innerHTML = `<div class="bookwrap">${hero}<form id="bf" class="card">
+    <div class="row2"><label>Your name*<input id="b_name" required maxlength="40" autocomplete="name"></label>
+    <label>WhatsApp number*<input id="b_phone" required inputmode="tel" placeholder="03xx xxxxxxx" autocomplete="tel"></label></div>
+    <label>Table*<select id="b_table">${tables.map(t => `<option value="${t.id}">${esc(t.name)} — ${esc(t.type)} (${money(t.rate)}/hr)</option>`).join('')}</select></label>
+    <div class="row2"><label>Date*<input type="date" id="b_date" min="${today}" max="${addDays(today, 30)}" value="${today}" required></label>
+    <label>Duration<select id="b_hours">${[1, 1.5, 2, 2.5, 3, 4].map(h => `<option value="${h}">${h} hour${h > 1 ? 's' : ''}</option>`).join('')}</select></label></div>
+    <label>Start time*<select id="b_time" required></select></label>
+    <div class="est"><span>Estimated amount</span><b id="b_est">—</b></div>
+    ${s.payNumber ? `<div class="pay"><div class="mute sm">Send advance payment to</div><b>${esc(s.payNumber)}</b><div>${esc(s.payTitle)}${s.payBank ? ' · ' + esc(s.payBank) : ''}</div></div>` : ''}
+    <label>Payment screenshot${s.requireScreenshot ? '*' : ' (optional)'}<input type="file" id="b_shot" accept="image/*" ${s.requireScreenshot ? 'required' : ''}></label>
+    <label>Note (optional)<textarea id="b_note" rows="2" maxlength="200"></textarea></label>
+    ${s.bookingNote ? `<p class="mute sm" style="margin-bottom:12px">${esc(s.bookingNote)}</p>` : ''}
+    <button class="btn gold full" id="b_btn">Send booking request</button></form>
+    <p class="foot">Staff? <a href="#/">Login here</a></p></div>`;
+  ['b_table','b_date','b_hours'].forEach(i => $('#' + i).onchange = refreshSlots);
+  $('#bf').onsubmit = submitBooking;
+  refreshSlots();
+}
+async function refreshSlots(){
+  const s = S.settings, sel = $('#b_time'), date = $('#b_date').value, tid = $('#b_table').value, hrs = +$('#b_hours').value, t = S.tables[tid];
+  $('#b_est').textContent = t ? money(calcBill(hrs * 3600000, t.rate).amount) : '—';
+  if (!date) { sel.innerHTML = '<option value="">Select a date first</option>'; return; }
+  sel.innerHTML = '<option value="">Loading…</option>';
+  let taken = {}; try { taken = (await DB.get('slots/' + date)) || {}; } catch(e) {}
+  if ($('#b_date').value !== date || $('#b_table').value !== tid || +$('#b_hours').value !== hrs) return;
+  const o = hhmm2m(s.openTime); let c = hhmm2m(s.closeTime); if (c <= o) c += 1440;
+  const base = new Date(date + 'T00:00:00').getTime(), now = DB.now();
+  const busy = Object.values(taken).filter(x => x && x.tableId === tid).map(x => [tmin(x.time), x.hours]);
+  let opts = '', any = false;
+  for (let m = o; m + hrs * 60 <= c; m += 30) {
+    if (base + m * 60000 < now + 15 * 60000) continue;
+    const hh = pad(Math.floor(m / 60) % 24) + ':' + pad(m % 60), clash = busy.some(([a, h]) => overlap(a, h, m, hrs));
+    if (!clash) any = true;
+    opts += `<option value="${hh}" ${clash ? 'disabled' : ''}>${hm12(hh)}${clash ? ' — booked' : ''}</option>`;
+  }
+  sel.innerHTML = any ? '<option value="">Select time</option>' + opts : '<option value="">No slots available — try another date</option>';
+}
+function compress(file){
+  return new Promise((res, rej) => { const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, 1000 / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg', 0.65)); };
+    img.onerror = () => rej(new Error('Please attach a valid image')); img.src = url; });
+}
+async function submitBooking(e){
+  e.preventDefault();
+  const btn = $('#b_btn'), name = $('#b_name').value.trim(), phone = $('#b_phone').value.trim(), date = $('#b_date').value,
+    time = $('#b_time').value, hours = +$('#b_hours').value, tid = $('#b_table').value, t = S.tables[tid], f = $('#b_shot').files[0];
+  if (phone.replace(/\D/g, '').length < 10) return toast('Enter a valid WhatsApp number', 1);
+  if (!time) return toast('Please select a start time', 1);
+  if (S.settings.requireScreenshot && !f) return toast('Please attach the payment screenshot', 1);
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const shot = f ? await compress(f) : null, id = DB.key();
+    const bk = {name, phone, date, time, hours, tableId:tid, table:t.name, type:t.type, rate:t.rate, amount:calcBill(hours * 3600000, t.rate).amount,
+      note:$('#b_note').value.trim(), status:'pending', createdAt:DB.now(), hasShot:!!shot};
+    await DB.set('bookings/' + id, bk);
+    if (shot) await DB.set('shots/' + id, shot);
+    renderBooked(bk, id);
+  } catch(err) { toast('Could not send: ' + err.message, 1); btn.disabled = false; btn.textContent = 'Send booking request'; }
+}
+function renderBooked(b, id){
+  const s = S.settings, ref = id.slice(-6).toUpperCase();
+  const txt = `Hi, I just sent a booking request (Ref ${ref}) for ${b.table} on ${prettyDate(b.date)} at ${hm12(b.time)}. Name: ${b.name}`;
+  $('#app').innerHTML = `<div class="bookwrap"><div class="hero"><div class="ok-ico">✓</div><h1>Request sent!</h1>
+    <p>We'll confirm on WhatsApp after checking your payment.</p></div>
+    <div class="card"><div class="rows"><div><span>Reference</span><b>${ref}</b></div><div><span>Table</span><b>${esc(b.table)}</b></div>
+    <div><span>Date</span><b>${prettyDate(b.date)}</b></div><div><span>Time</span><b>${hm12(b.time)} · ${b.hours} hr</b></div><div><span>Amount</span><b>${money(b.amount)}</b></div></div></div>
+    ${s.whatsapp ? `<a class="btn gold full" href="https://wa.me/${waNum(s.whatsapp)}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Message us on WhatsApp</a>` : ''}
+    <button class="btn full" style="margin-top:10px" onclick="location.reload()">Book another table</button></div>`;
+}
+
+boot();
+</script>
+</body>
+</html>
