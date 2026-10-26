@@ -77,6 +77,7 @@ main{max-width:1200px;margin:auto;padding:16px}
 .added{background:var(--panel2);border-radius:10px;padding:8px 12px;margin-bottom:12px}
 table.peak td,table.peak th{padding:6px 8px}table.peak input[type=time]{width:auto;margin:0;padding:6px 8px}table.peak input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--felt)}
 .peaknow{color:var(--no-tx)}
+.card.dz{border-color:var(--red)}.card.dz h4{color:var(--red)}
 .gift{text-align:center;font-style:italic;color:var(--mute);opacity:.6;font-size:13px;margin:18px 0 8px}
 .resv{font-size:12px;color:var(--pend-tx);background:var(--resv-bg);border-radius:8px;padding:6px 10px;font-weight:600}
 .blist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
@@ -773,6 +774,9 @@ function viewSettings(){
     </tbody></table></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Save settings</button></div>
   <div class="card"><div class="cardhead"><h4>Tables</h4><button class="btn sm primary" onclick="editTable()">+ Add table</button></div><div id="tblAdmin"></div></div>
   <div class="card"><div class="cardhead"><h4>Canteen items</h4><button class="btn sm primary" onclick="editItem()">+ Add item</button></div><div id="cntAdmin"></div></div>
+  <div class="card dz"><h4>Danger zone</h4>
+    <p class="mute sm" style="margin-bottom:12px">Deletes all sales, bookings, payment screenshots and frees every running table. Tables, rates, canteen items and settings are kept unless you tick the full reset option. This cannot be undone.</p>
+    <button class="btn danger" onclick="resetModal()">Reset all data</button></div>
   <p class="gift">Gift for Waqar Alam, from Osama Junaid &amp; Zaid Junaid</p>`;
 }
 async function saveSettings(){
@@ -826,6 +830,34 @@ function editItem(id){
     const v = {name:$('#ci_name').value.trim(), price:+$('#ci_price').value || 0};
     if (!v.name) return toast('Enter item name', 1);
     try { if (id) await DB.update('canteen/' + id, v); else await DB.push('canteen', v); closeModal(); toast('Saved'); } catch(e) { toast(e.message, 1); }
+  };
+}
+const RESET_HASH = '74a3e205168259305b3dc28046d6821eaf464c6ee78f778945f1ba5f9d22b508';
+async function sha256(s){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function resetModal(){
+  if (!isAdmin()) return;
+  openModal(`<h3 style="color:var(--red)">Reset all data</h3>
+    <p class="mute sm" style="margin-bottom:12px">All sales, bookings and payment screenshots will be permanently deleted, and running tables will be cleared.</p>
+    <label>Reset password<input type="password" id="rs_pw" autocomplete="off" autofocus></label>
+    <label class="chk"><input type="checkbox" id="rs_full"> Also delete tables, canteen items and settings (full factory reset)</label>
+    <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn danger" id="rs_go">Reset now</button></div>`, true);
+  $('#rs_go').onclick = async () => {
+    const btn = $('#rs_go'); let ok = false;
+    try { ok = (await sha256($('#rs_pw').value)) === RESET_HASH; } catch(e) {}
+    if (!ok) return toast('Wrong password', 1);
+    const full = $('#rs_full').checked;
+    if (!confirm(full ? 'Delete EVERYTHING including tables, rates, canteen and settings?' : 'Delete all sales and bookings?')) return;
+    btn.disabled = true; btn.textContent = 'Resetting…';
+    try {
+      const [ses, bks] = await Promise.all([DB.get('sessions'), DB.get('bookings')]), up = {};
+      Object.keys(ses || {}).forEach(k => up['sessions/' + k] = null);
+      Object.keys(bks || {}).forEach(k => { up['bookings/' + k] = null; up['shots/' + k] = null; });
+      up['slots'] = null;
+      if (full) { up['tables'] = null; up['canteen'] = null; up['settings'] = null; }
+      else Object.keys(S.tables || {}).forEach(k => { up[`tables/${k}/live`] = null; up[`tables/${k}/status`] = 'free'; up[`tables/${k}/start`] = null; up[`tables/${k}/customer`] = null; up[`tables/${k}/startedBy`] = null; });
+      await DB.update('', up);
+      closeModal(); S.salesRows = []; S.from = null; toast('All data reset'); renderShell();
+    } catch(e) { toast(e.message, 1); btn.disabled = false; btn.textContent = 'Reset now'; }
   };
 }
 async function delItem(id){ const c = (S.canteen || {})[id]; if (!c || !confirm(`Delete ${c.name}?`)) return; try { await DB.remove('canteen/' + id); toast('Deleted'); } catch(e) { toast(e.message, 1); } }
