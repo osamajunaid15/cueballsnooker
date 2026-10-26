@@ -75,6 +75,9 @@ main{max-width:1200px;margin:auto;padding:16px}
 .citem{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px}.citem:last-child{border-bottom:0}
 .qty{display:flex;align-items:center;gap:8px}.qty b{min-width:22px;text-align:center}.qty .btn{width:32px;padding:5px 0}
 .added{background:var(--panel2);border-radius:10px;padding:8px 12px;margin-bottom:12px}
+table.peak td,table.peak th{padding:6px 8px}table.peak input[type=time]{width:auto;margin:0;padding:6px 8px}table.peak input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--felt)}
+.peaknow{color:var(--no-tx)}
+.gift{text-align:center;font-style:italic;color:var(--mute);opacity:.6;font-size:13px;margin:18px 0 8px}
 .resv{font-size:12px;color:var(--pend-tx);background:var(--resv-bg);border-radius:8px;padding:6px 10px;font-weight:600}
 .blist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 .rows>div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px}
@@ -176,10 +179,10 @@ if (!DEMO) {
   const LS = 'cueball_demo_v1';
   const clone = v => v == null ? null : JSON.parse(JSON.stringify(v));
   const seed = () => ({settings:{...DEF}, tables:{
-    t1:{name:'Table 1',type:'Snooker',ppm:10,order:1,status:'free'},
-    t2:{name:'Table 2',type:'Snooker',ppm:10,order:2,status:'free'},
-    t3:{name:'Table 3',type:'Snooker',ppm:10,order:3,status:'free'},
-    t4:{name:'Pool 1',type:'8-Ball Pool',ppm:7,order:4,status:'free'}},
+    t1:{name:'Table 1',type:'Snooker',ppm:8,ppmPeak:10,order:1,status:'free'},
+    t2:{name:'Table 2',type:'Snooker',ppm:8,ppmPeak:10,order:2,status:'free'},
+    t3:{name:'Table 3',type:'Snooker',ppm:8,ppmPeak:10,order:3,status:'free'},
+    t4:{name:'Pool 1',type:'8-Ball Pool',ppm:5,ppmPeak:7,order:4,status:'free'}},
     canteen:{c1:{name:'Water bottle',price:80},c2:{name:'Cold drink',price:120},c3:{name:'Chips',price:70},c4:{name:'Tea',price:60}}});
   let mem = null; try { mem = JSON.parse(localStorage.getItem(LS)); } catch(e) {}
   if (!mem) mem = seed();
@@ -233,6 +236,7 @@ const hhmm2m = s => { const [h, m] = String(s || '0:0').split(':').map(Number); 
 function tmin(s){ let t = hhmm2m(s); const o = hhmm2m(S.settings.openTime), c = hhmm2m(S.settings.closeTime); if (c <= o && t < o) t += 1440; return t; }
 const overlap = (a, ah, b, bh) => a < b + bh * 60 && b < a + ah * 60;
 const bookTs = b => new Date(b.date + 'T00:00:00').getTime() + tmin(b.time) * 60000;
+const waLink = (phone, text) => `https://api.whatsapp.com/send?phone=${waNum(phone)}${text ? '&text=' + encodeURIComponent(text) : ''}`;
 function waNum(p){ let d = String(p).replace(/\D/g, ''); if (d.startsWith('0')) d = '92' + d.slice(1); else if (d.length === 10 && d[0] === '3') d = '92' + d; return d; }
 const bookUrl = () => location.href.split('#')[0] + '#/book';
 const sortedTables = () => Object.entries(S.tables || {}).map(([id, t]) => ({id, ...t}))
@@ -243,7 +247,7 @@ function openModal(html, sticky){ closeModal(); const o = document.createElement
   o.innerHTML = `<div class="modal">${html}</div>`; o.onclick = e => { if (e.target === o && !sticky) closeModal(); }; document.body.appendChild(o);
   const f = o.querySelector('[autofocus]'); if (f) setTimeout(() => f.focus(), 60); return o; }
 function closeModal(){ const o = $('#ov'); if (o) o.remove(); }
-function copyText(t){ (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Link copied')).catch(() => prompt('Copy this link:', t)); }
+function copyText(t, what){ (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast((what || 'Link') + ' copied')).catch(() => prompt('Copy:', t)); }
 function authErr(e){ const c = (e && e.code) || ''; if (/wrong-password|invalid-credential|invalid-login|user-not-found/.test(c)) return 'Wrong password';
   if (/too-many/.test(c)) return 'Too many attempts. Try again later.'; if (/network/.test(c)) return 'No internet connection'; return (e && e.message) || 'Login failed'; }
 
@@ -332,7 +336,41 @@ const ppmOf = t => t && t.ppm != null ? +t.ppm : (+(t && t.rate) || 0) / 60;
 const minsOf = ms => ms > 0 ? Math.ceil(ms / 60000) : 0;
 const amtOf = (mins, ppm) => Math.round(mins * (+ppm || 0));
 const roundBill = n => { const r = +S.settings.roundTo || 0; return r > 0 ? Math.ceil(n / r) * r : Math.round(n); };
-const rateTxt = t => CURRENCY + ' ' + (+ppmOf(t).toFixed(2)) + '/min';
+const ppmPeakOf = t => t && t.ppmPeak != null && t.ppmPeak !== '' ? +t.ppmPeak : ppmOf(t);
+const hasPeak = t => ppmPeakOf(t) !== ppmOf(t);
+const nfmt = n => +(+n).toFixed(2);
+const rateTxt = t => hasPeak(t) ? `${CURRENCY} ${nfmt(ppmOf(t))}/min · Peak ${nfmt(ppmPeakOf(t))}` : `${CURRENCY} ${nfmt(ppmOf(t))}/min`;
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DEF_PEAK = {0:{on:true, all:true}, 1:{on:true, from:'18:00', to:'02:00'}, 2:{on:true, from:'18:00', to:'02:00'}, 3:{on:true, from:'18:00', to:'02:00'},
+  4:{on:true, from:'18:00', to:'02:00'}, 5:{on:true, from:'18:00', to:'02:00'}, 6:{on:true, all:true}};
+const peakCfg = () => S.settings.peak || DEF_PEAK;
+function peakWindows(a, b){
+  const out = [], dsh = (+S.settings.dayStartHour || 0) * 60, cfg = peakCfg();
+  for (let d = addDays(bizDate(a), -1), last = bizDate(b); d <= last; d = addDays(d, 1)) {
+    const c = cfg[new Date(d + 'T00:00:00').getDay()]; if (!c || !c.on) continue;
+    const base = new Date(d + 'T00:00:00').getTime(); let s, e;
+    if (c.all) { s = dsh; e = dsh + 1440; }
+    else { s = hhmm2m(c.from); e = hhmm2m(c.to); if (s < dsh) s += 1440; if (e <= s) e += 1440; }
+    out.push([base + s * 60000, base + e * 60000]);
+  }
+  return out;
+}
+const isPeakAt = ts => peakWindows(ts, ts + 1).some(([s, e]) => ts >= s && ts < e);
+function priceSegs(t, segs){
+  const ms = segs.reduce((a, [s, e]) => a + (e - s), 0), mins = minsOf(ms);
+  const pk = segs.reduce((a, [s, e]) => a + peakWindows(s, e).reduce((x, [ps, pe]) => x + Math.max(0, Math.min(e, pe) - Math.max(s, ps)), 0), 0);
+  const peakMins = ms ? Math.min(mins, Math.round(mins * pk / ms)) : 0, offMins = mins - peakMins;
+  return {ms, mins, peakMins, offMins, amount:Math.round(peakMins * ppmPeakOf(t) + offMins * ppmOf(t))};
+}
+function chargeSegs(l, now){
+  if (!l.frameStart) return [];
+  const end = frameEnd(l, now); if (end <= l.frameStart) return [];
+  const ps = l.pauses || [];
+  if (!ps.length && +l.pausedMs) return [[Math.min(end, l.frameStart + +l.pausedMs), end]];
+  let segs = [[l.frameStart, end]];
+  ps.forEach(p => { segs = segs.flatMap(([s, e]) => { if (p.b <= s || p.a >= e) return [[s, e]]; const r = []; if (p.a > s) r.push([s, p.a]); if (p.b < e) r.push([p.b, e]); return r; }); });
+  return segs;
+}
 const canteenList = () => Object.entries(S.canteen || {}).map(([id, c]) => ({id, ...c})).sort((a, b) => String(a.name).localeCompare(String(b.name)));
 function liveOf(t){
   if (!t) return null;
@@ -341,13 +379,14 @@ function liveOf(t){
   if (!l) return null;
   l.frames = Array.isArray(l.frames) ? l.frames.filter(Boolean) : Object.values(l.frames || {});
   l.items = Array.isArray(l.items) ? l.items.filter(Boolean) : Object.values(l.items || {});
+  l.pauses = Array.isArray(l.pauses) ? l.pauses.filter(Boolean) : Object.values(l.pauses || {});
   return l;
 }
 const frameEnd = (l, now) => Math.min(...[l.pausedAt, l.stopAt, now].filter(Boolean));
-const curFrameMs = (l, now) => l.frameStart ? Math.max(0, frameEnd(l, now) - l.frameStart - (+l.pausedMs || 0)) : 0;
+const curFrameMs = (l, now) => chargeSegs(l, now).reduce((a, [s, e]) => a + (e - s), 0);
 function totals(t, l, now, lastName){
-  const ppm = ppmOf(t), frames = l.frames.slice();
-  if (l.frameStart) { const m = minsOf(curFrameMs(l, now)); if (m > 0) frames.push({name:lastName || '', mins:m, amount:amtOf(m, ppm), from:l.frameStart, to:frameEnd(l, now), cur:true}); }
+  const frames = l.frames.slice();
+  if (l.frameStart) { const p = priceSegs(t, chargeSegs(l, now)); if (p.mins > 0) frames.push({name:lastName || '', mins:p.mins, peakMins:p.peakMins, offMins:p.offMins, amount:p.amount, from:l.frameStart, to:frameEnd(l, now), cur:true}); }
   const game = frames.reduce((a, f) => a + (+f.amount || 0), 0);
   const canteen = l.items.reduce((a, i) => a + (+i.price || 0) * (+i.qty || 1), 0);
   const gameR = roundBill(game);
@@ -392,7 +431,8 @@ function tCard(t){
     felt = `<div class="timer">${big}</div><div class="bill">${money(tt.total)}</div>
       <div class="meta">${st === 'paused' ? '⏸ Paused · ' : st === 'billing' ? 'Timer stopped · ' : ''}${st === 'off' ? 'Waiting for next frame' : 'Frame ' + fno}${l.customer ? ' · ' + esc(l.customer) : ''}</div>`;
     const by = {}; l.frames.forEach(f => { const k = f.name || '—'; by[k] = (by[k] || 0) + (+f.amount || 0); });
-    chips = Object.keys(by).length || tt.canteen ? `<div class="chips">${Object.entries(by).map(([k, v]) => `<span>${esc(k)} ${money(v)}</span>`).join('')}${tt.canteen ? `<span>🥤 ${money(tt.canteen)}</span>` : ''}</div>` : '';
+    if (l.booking) by['📅 ' + l.booking.name + (l.booking.advance ? ' · adv ' + money(l.booking.advance) : '')] = null;
+    chips = Object.keys(by).length || tt.canteen ? `<div class="chips">${Object.entries(by).map(([k, v]) => `<span>${esc(k)}${v == null ? '' : ' ' + money(v)}</span>`).join('')}${tt.canteen ? `<span>🥤 ${money(tt.canteen)}</span>` : ''}</div>` : '';
     const stop = `<button class="btn danger full" onclick="stopTable('${t.id}')">Stop &amp; Bill</button>`;
     const cant = `<button class="btn" onclick="canteenModal('${t.id}')">Canteen</button>`;
     if (st === 'running') btns = `<div class="btnrow"><button class="btn" onclick="pauseTable('${t.id}')">Pause</button><button class="btn" onclick="offTable('${t.id}')">Off</button>${cant}</div>${stop}`;
@@ -401,7 +441,7 @@ function tCard(t){
     else btns = `<button class="btn gold full" onclick="billModal('${t.id}')">Continue billing</button>`;
   }
   return `<div class="tcard ${l ? 'run' : ''}">
-    <div class="thead"><div><div class="tname">${esc(t.name)}</div><div class="ttype">${esc(t.type)} · ${rateTxt(t)}</div></div>
+    <div class="thead"><div><div class="tname">${esc(t.name)}</div><div class="ttype">${esc(t.type)} · ${hasPeak(t) ? (isPeakAt(now) ? `<b class="peaknow">Peak</b> ${CURRENCY} ${nfmt(ppmPeakOf(t))}/min` : `Off-peak ${CURRENCY} ${nfmt(ppmOf(t))}/min`) : rateTxt(t)}</div></div>
     <span class="pill ${pill[0]}">${pill[1]}</span></div>
     <div class="felt" ${st === 'running' ? `data-live="${t.id}"` : ''}>${felt}</div>
     ${chips}
@@ -411,29 +451,40 @@ function tCard(t){
 }
 function startTable(id){
   const t = S.tables[id]; if (!t || liveOf(t)) return;
+  const today = bizDate(DB.now()), used = new Set(Object.values(S.tables || {}).map(x => x.live && x.live.booking && x.live.booking.id).filter(Boolean));
+  const bks = Object.entries(S.bookings || {}).map(([k, b]) => ({id:k, ...b})).filter(b => b.status === 'approved' && b.date === today && !b.usedIn && !used.has(b.id))
+    .sort((a, b) => (a.tableId === id ? 0 : 1) - (b.tableId === id ? 0 : 1) || tmin(a.time) - tmin(b.time));
+  const pre = bks.find(b => b.tableId === id);
   openModal(`<h3>Start ${esc(t.name)}</h3>
-    <label>Customer name (optional)<input id="m_cust" placeholder="e.g. Ali" maxlength="30" autofocus></label>
+    ${bks.length ? `<label>Online booking<select id="m_bk"><option value="">No booking (walk-in)</option>${bks.map(b => `<option value="${b.id}" ${pre && pre.id === b.id ? 'selected' : ''}>${esc(b.name)} · ${hm12(b.time)} · ${esc(b.table)}${b.advance ? ' · Advance ' + money(b.advance.amount) : ''}</option>`).join('')}</select></label>` : ''}
+    <label>Customer name (optional)<input id="m_cust" placeholder="e.g. Ali" maxlength="30" value="${pre ? esc(pre.name) : ''}" autofocus></label>
     <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="m_go">Start timer</button></div>`);
+  if ($('#m_bk')) $('#m_bk').onchange = () => { const b = S.bookings[$('#m_bk').value]; if (b) $('#m_cust').value = b.name; };
   $('#m_go').onclick = async () => { const btn = $('#m_go'); btn.disabled = true; const now = DB.now();
-    try { await saveLive(id, {start:now, frameStart:now, pausedMs:0, customer:$('#m_cust').value.trim(), by:S.role}); closeModal(); toast(t.name + ' started'); }
+    const bid = $('#m_bk') ? $('#m_bk').value : '', b = bid ? S.bookings[bid] : null;
+    const lv = {start:now, frameStart:now, pausedMs:0, customer:$('#m_cust').value.trim(), by:S.role};
+    if (b) lv.booking = {id:bid, name:b.name, advance:b.advance ? +b.advance.amount || 0 : 0};
+    try { await saveLive(id, lv); closeModal(); toast(t.name + ' started'); }
     catch(e) { toast(e.message, 1); btn.disabled = false; } };
 }
 function pauseTable(id){ const l = liveOf(S.tables[id]); if (!l || l.pausedAt || !l.frameStart || l.stopAt) return; l.pausedAt = DB.now(); act(() => saveLive(id, l)); }
-function resumeTable(id){ const l = liveOf(S.tables[id]); if (!l || !l.pausedAt) return; l.pausedMs = (+l.pausedMs || 0) + DB.now() - l.pausedAt; delete l.pausedAt; act(() => saveLive(id, l)); }
-function onTable(id){ const l = liveOf(S.tables[id]); if (!l || l.frameStart || l.stopAt) return; l.frameStart = DB.now(); l.pausedMs = 0; delete l.pausedAt; act(() => saveLive(id, l)); }
+function resumeTable(id){ const l = liveOf(S.tables[id]); if (!l || !l.pausedAt) return; const now = DB.now();
+  l.pauses.push({a:l.pausedAt, b:now}); l.pausedMs = (+l.pausedMs || 0) + now - l.pausedAt; delete l.pausedAt; act(() => saveLive(id, l)); }
+function onTable(id){ const l = liveOf(S.tables[id]); if (!l || l.frameStart || l.stopAt) return; l.frameStart = DB.now(); l.pausedMs = 0; l.pauses = []; delete l.pausedAt; act(() => saveLive(id, l)); }
 function offTable(id){
   const t = S.tables[id], l = liveOf(t); if (!l || !l.frameStart || l.stopAt) return;
-  const end = l.pausedAt || DB.now(), m = minsOf(Math.max(0, end - l.frameStart - (+l.pausedMs || 0))), amt = amtOf(m, ppmOf(t));
+  const end = l.pausedAt || DB.now(), pr = priceSegs(t, chargeSegs(l, end)), m = pr.mins, amt = pr.amount;
   openModal(`<h3>Off — ${esc(t.name)}</h3>
-    <div class="rows" style="margin-bottom:14px"><div><span>Frame time</span><b>${m} min</b></div><div><span>Frame amount</span><b>${money(amt)}</b></div></div>
+    <div class="rows" style="margin-bottom:14px"><div><span>Frame time</span><b>${m} min</b></div>${splitRow(pr)}<div><span>Frame amount</span><b>${money(amt)}</b></div></div>
     <label>Who pays this frame?*<input id="o_name" list="o_names" maxlength="30" autofocus>${namesDatalist('o_names', l)}</label>
     <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="o_go">Off</button></div>`);
   const go = async () => { const name = $('#o_name').value.trim(); if (!name) return toast('Enter a name', 1);
     const l2 = liveOf(S.tables[id]); if (!l2 || !l2.frameStart) return closeModal();
-    l2.frames.push({name, mins:m, amount:amt, from:l2.frameStart, to:end}); delete l2.frameStart; delete l2.pausedAt; l2.pausedMs = 0;
+    l2.frames.push({name, mins:m, peakMins:pr.peakMins, offMins:pr.offMins, amount:amt, from:l2.frameStart, to:end}); delete l2.frameStart; delete l2.pausedAt; l2.pausedMs = 0; l2.pauses = [];
     try { await saveLive(id, l2); closeModal(); toast(`${name}: ${money(amt)}`); } catch(e) { toast(e.message, 1); } };
   $('#o_go').onclick = go; $('#o_name').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
+const splitRow = p => p.peakMins && p.offMins ? `<div><span>Split</span><b>${p.offMins} min off-peak + ${p.peakMins} min peak</b></div>` : p.peakMins ? `<div><span>Rate</span><b>Peak</b></div>` : '';
 function payBlock(){
   return `<div class="row2"><label>Cash received<input id="p_cash" type="number" min="0" inputmode="numeric"></label>
     <label>Online received<input id="p_onl" type="number" min="0" inputmode="numeric" value="0"></label></div>
@@ -454,12 +505,12 @@ function wirePay(getTotal){
     return {cash, online, received, discount:T - received, method:cash && online ? 'Split' : online ? 'Online' : 'Cash'}; }};
 }
 function brkTable(tt, l){
-  const by = {}, add = (n, k, v, m) => { n = n || '—'; by[n] = by[n] || {g:0, c:0, m:0, f:0}; by[n][k] += v; if (m != null) { by[n].m += m; by[n].f++; } };
-  tt.frames.forEach(f => add(f.name, 'g', +f.amount || 0, +f.mins || 0));
+  const by = {}, add = (n, k, v, m, pm) => { n = n || '—'; by[n] = by[n] || {g:0, c:0, m:0, f:0, p:0}; by[n][k] += v; if (m != null) { by[n].m += m; by[n].f++; by[n].p += pm || 0; } };
+  tt.frames.forEach(f => add(f.name, 'g', +f.amount || 0, +f.mins || 0, +f.peakMins || 0));
   l.items.forEach(i => add(i.player, 'c', (+i.price || 0) * (+i.qty || 1)));
   const rows = Object.entries(by); if (!rows.length) return '';
   return `<div class="scroll" style="margin-bottom:12px"><table class="list"><thead><tr><th>Name</th><th class="num">Game</th><th class="num">Canteen</th><th class="num">Total</th></tr></thead><tbody>
-    ${rows.map(([n, x]) => `<tr><td>${esc(n)}${x.f ? `<div class="mute sm">${x.f} frame${x.f > 1 ? 's' : ''} · ${x.m} min</div>` : ''}</td><td class="num">${money(x.g)}</td><td class="num">${money(x.c)}</td><td class="num"><b>${money(x.g + x.c)}</b></td></tr>`).join('')}
+    ${rows.map(([n, x]) => `<tr><td>${esc(n)}${x.f ? `<div class="mute sm">${x.f} frame${x.f > 1 ? 's' : ''} · ${x.m} min${x.p ? ` (${x.p === x.m ? 'peak' : x.p + ' peak'})` : ''}</div>` : ''}</td><td class="num">${money(x.g)}</td><td class="num">${money(x.c)}</td><td class="num"><b>${money(x.g + x.c)}</b></td></tr>`).join('')}
     ${tt.round ? `<tr><td class="mute">Rounding</td><td class="num">${money(tt.round)}</td><td></td><td class="num">${money(tt.round)}</td></tr>` : ''}
     </tbody></table></div>
     ${l.items.length ? `<div class="mute sm" style="margin:-4px 0 12px">Canteen: ${l.items.map(i => `${i.qty}× ${esc(i.name)}`).join(', ')}</div>` : ''}`;
@@ -477,23 +528,30 @@ function billModal(id){
     <div class="rows" style="margin-bottom:12px"><div><span>Time</span><b>${fmtTime(l.start)} – ${fmtTime(l.stopAt)}</b></div><div><span>Rate</span><b>${rateTxt(t)}</b></div></div>
     ${needName ? `<label>Last frame paid by<input id="bl_last" list="bl_names" value="${esc(lastDef)}" maxlength="30">${namesDatalist('bl_names', l)}</label>` : ''}
     <div id="bl_brk"></div>
-    <div class="total"><span>Total bill</span><b id="bl_tot"></b></div>
+    ${l.booking && l.booking.advance ? `<div class="rows" style="margin-bottom:6px"><div><span>Total bill</span><b id="bl_tot"></b></div><div><span>Advance paid (${esc(l.booking.name)})</span><b>− ${money(l.booking.advance)}</b></div></div>
+      <div class="total"><span>To pay</span><b id="bl_due"></b></div>` : `<div class="total"><span>Total bill</span><b id="bl_tot"></b></div>`}
     ${payBlock()}
     <div class="mact">${isAdmin() ? `<button class="btn ghost sm" id="bl_void">Void (no charge)</button>` : ''}
       <button class="btn" id="bl_back">Back (resume)</button><button class="btn primary" id="bl_pay">Payment received</button></div>`, true);
+  const adv = l.booking ? +l.booking.advance || 0 : 0;
   const calc = () => totals(t, l, l.stopAt, needName ? $('#bl_last').value.trim() : '');
-  const draw = () => { const tt = calc(); $('#bl_brk').innerHTML = brkTable(tt, l); $('#bl_tot').textContent = money(tt.total); };
+  const due = () => Math.max(0, calc().total - adv);
+  const draw = () => { const tt = calc(); $('#bl_brk').innerHTML = brkTable(tt, l); $('#bl_tot').textContent = money(tt.total); if ($('#bl_due')) $('#bl_due').textContent = money(due()); };
   draw();
-  const pay = wirePay(() => calc().total);
+  const pay = wirePay(due);
   if (needName) $('#bl_last').oninput = draw;
   $('#bl_back').onclick = async () => { const l2 = liveOf(S.tables[id]);
-    if (l2 && l2.stopAt) { if (l2.frameStart && !l2.pausedAt) l2.pausedMs = (+l2.pausedMs || 0) + DB.now() - l2.stopAt; delete l2.stopAt; await act(() => saveLive(id, l2)); }
+    if (l2 && l2.stopAt) { const now = DB.now(); if (l2.frameStart && !l2.pausedAt) { l2.pauses.push({a:l2.stopAt, b:now}); l2.pausedMs = (+l2.pausedMs || 0) + now - l2.stopAt; } delete l2.stopAt; await act(() => saveLive(id, l2)); }
     closeModal(); };
   $('#bl_pay').onclick = async () => { let p; try { p = pay.get(); } catch(e) { return toast(e.message, 1); }
     const btn = $('#bl_pay'); btn.disabled = true; const tt = calc();
     try {
-      await DB.push('sessions', {tableId:id, table:t.name, type:t.type, customer:l.customer || '', start:l.start, end:l.stopAt, minutes:tt.mins, ppm:ppmOf(t),
-        frames:tt.frames.map(({cur, ...f}) => f), items:l.items, game:tt.gameR, canteen:tt.canteen, bill:tt.total, ...p, amount:p.received, by:S.role, date:bizDate(l.start)});
+      const key = DB.key(), up = {};
+      up['sessions/' + key] = {tableId:id, table:t.name, type:t.type, customer:l.customer || '', start:l.start, end:l.stopAt, minutes:tt.mins, ppm:ppmOf(t), ppmPeak:ppmPeakOf(t),
+        frames:tt.frames.map(({cur, ...f}) => f), items:l.items, game:tt.gameR, canteen:tt.canteen, bill:tt.total, advance:adv, due:Math.max(0, tt.total - adv),
+        bookingId:l.booking ? l.booking.id : '', ...p, amount:p.received, by:S.role, date:bizDate(l.start)};
+      if (l.booking && S.bookings[l.booking.id]) up[`bookings/${l.booking.id}/usedIn`] = key;
+      await DB.update('', up);
       await saveLive(id, null); closeModal(); toast('Saved ' + money(p.received));
     } catch(e) { toast(e.message, 1); btn.disabled = false; } };
   if ($('#bl_void')) $('#bl_void').onclick = async () => { if (confirm('Clear this table without saving a sale?')) { await act(() => saveLive(id, null)); closeModal(); toast('Table cleared'); } };
@@ -535,7 +593,7 @@ const whenKey = b => b.date + pad(tmin(b.time)).padStart(5, '0');
 function viewBookings(){
   const today = bizDate(DB.now());
   const all = Object.entries(S.bookings || {}).map(([id, b]) => ({id, ...b}));
-  const up = b => b.status === 'approved' && b.date >= today;
+  const up = b => b.status === 'approved' && b.date >= today && !b.usedIn;
   const L = {
     pending: all.filter(b => b.status === 'pending').sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)),
     upcoming: all.filter(up).sort((a, b) => whenKey(a).localeCompare(whenKey(b))),
@@ -547,15 +605,19 @@ function viewBookings(){
     ${L[t].length ? `<div class="blist">${L[t].map(bCard).join('')}</div>` : `<div class="empty">${t === 'pending' ? 'No pending requests.' : 'Nothing here.'}</div>`}`;
 }
 function bCard(b){
-  const st = {pending:['p-pend','Pending'], approved:['p-ok','Approved'], rejected:['p-no','Rejected']}[b.status] || ['p-pend', b.status];
+  const st = b.usedIn ? ['p-ok','Played'] : ({pending:['p-pend','Pending'], approved:['p-ok','Approved'], rejected:['p-no','Rejected'], cancelled:['p-no','Cancelled']}[b.status] || ['p-pend', b.status]);
+  const canRefund = isAdmin() && b.advance && +b.advance.amount > 0 && !b.refund && !b.usedIn;
   return `<div class="bcard">
     <div class="thead"><div><div class="tname">${esc(b.name)}</div><a class="ttype" href="tel:${esc(b.phone)}">${esc(b.phone)}</a></div><span class="pill ${st[0]}">${st[1]}</span></div>
     <div class="rows"><div><span>Date</span><b>${prettyDate(b.date)}</b></div><div><span>Time</span><b>${hm12(b.time)} · ${b.hours} hr</b></div>
-    <div><span>Table</span><b>${esc(b.table)}</b></div><div><span>Amount</span><b>${money(b.amount)}</b></div></div>
+    <div><span>Table</span><b>${esc(b.table)}</b></div><div><span>Amount</span><b>${money(b.amount)}</b></div>
+    ${b.advance ? `<div><span>Advance</span><b>${money(b.advance.amount)} · ${esc(b.advance.method)}</b></div>` : ''}
+    ${b.refund ? `<div><span>Refunded</span><b style="color:var(--red)">${money(b.refund.amount)} · ${esc(b.refund.method)}</b></div>` : ''}</div>
     ${b.note ? `<div class="note">“${esc(b.note)}”</div>` : ''}
     <div class="mact">${b.hasShot ? `<button class="btn sm" onclick="viewShot('${b.id}')">Payment proof</button>` : `<span class="mute sm">No screenshot</span>`}
       <div style="flex:1"></div>
       ${isAdmin() ? `<button class="btn sm ghost" onclick="delBooking('${b.id}')">Delete</button>` : ''}
+      ${canRefund ? `<button class="btn sm danger" onclick="refundModal('${b.id}')">Refund</button>` : ''}
       ${b.status === 'pending' ? `<button class="btn sm danger" onclick="decide('${b.id}','rejected')">Reject</button><button class="btn sm primary" onclick="decide('${b.id}','approved')">Approve</button>`
         : `<button class="btn sm" onclick="waModal('${b.id}')">WhatsApp</button>`}</div></div>`;
 }
@@ -566,26 +628,67 @@ function findClash(id){
 }
 async function decide(id, st){
   const b = S.bookings[id]; if (!b) return;
-  if (st === 'approved') { const c = findClash(id); if (c && !confirm(`${c.table} is already booked for ${c.name} at ${hm12(c.time)} on this date. Approve anyway?`)) return; }
-  else if (!confirm('Reject this booking?')) return;
-  try {
-    await DB.update('', {[`bookings/${id}/status`]:st, [`bookings/${id}/handledBy`]:S.role,
-      [`slots/${b.date}/${id}`]: st === 'approved' ? {tableId:b.tableId, time:b.time, hours:b.hours} : null});
-    waModal(id, st);
-  } catch(e) { toast(e.message, 1); }
+  if (st === 'approved') return approveModal(id);
+  if (!confirm('Reject this booking?')) return;
+  try { await DB.update('', {[`bookings/${id}/status`]:'rejected', [`bookings/${id}/handledBy`]:S.role, [`slots/${b.date}/${id}`]:null}); waModal(id, 'rejected'); }
+  catch(e) { toast(e.message, 1); }
 }
+function moneyEntry(o){ const now = DB.now(), amt = o.amount;
+  return {tableId:'', table:o.label, type:o.type, customer:o.name, bookingId:o.bookingId, start:now, end:now, minutes:0, game:0, canteen:0, bill:amt, discount:0,
+    cash:o.method === 'Cash' ? amt : 0, online:o.method === 'Cash' ? 0 : amt, received:amt, amount:amt, method:o.method, by:S.role, date:bizDate(now)}; }
+function approveModal(id){
+  const b = S.bookings[id]; if (!b) return; const c = findClash(id);
+  openModal(`<h3>Approve booking</h3>
+    <div class="rows" style="margin-bottom:12px"><div><span>Customer</span><b>${esc(b.name)}</b></div><div><span>When</span><b>${prettyDate(b.date)} · ${hm12(b.time)} · ${b.hours} hr</b></div>
+      <div><span>Table</span><b>${esc(b.table)}</b></div><div><span>Booking amount</span><b>${money(b.amount)}</b></div></div>
+    ${c ? `<div class="resv" style="margin-bottom:12px">⚠ ${esc(c.table)} is already booked for ${esc(c.name)} at ${hm12(c.time)} on this date.</div>` : ''}
+    ${b.hasShot ? `<button class="btn sm" style="margin-bottom:12px" onclick="viewShot('${id}')">View payment proof</button>` : ''}
+    <div class="row2"><label>Advance received<input id="ad_amt" type="number" min="0" inputmode="numeric" value="${esc(b.amount)}"></label>
+      <label>Received in<select id="ad_m"><option>Online</option><option>Cash</option></select></label></div>
+    <p class="mute sm" style="margin:-4px 0 12px">Added to today's sales, and deducted from the bill when they play. Enter 0 if no advance.</p>
+    <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="ad_go">Approve</button></div>`);
+  $('#ad_go').onclick = async () => {
+    const amt = +$('#ad_amt').value || 0, method = $('#ad_m').value; if (amt < 0) return toast('Invalid amount', 1);
+    const btn = $('#ad_go'); btn.disabled = true; const up = {};
+    up[`bookings/${id}/status`] = 'approved'; up[`bookings/${id}/handledBy`] = S.role;
+    up[`slots/${b.date}/${id}`] = {tableId:b.tableId, time:b.time, hours:b.hours};
+    if (amt > 0) { const key = DB.key(); up['sessions/' + key] = moneyEntry({label:'Booking advance', type:'Advance', name:b.name, bookingId:id, amount:amt, method});
+      up[`bookings/${id}/advance`] = {amount:amt, method, at:DB.now(), by:S.role, sid:key}; }
+    try { await DB.update('', up); closeModal(); waModal(id, 'approved'); } catch(e) { toast(e.message, 1); btn.disabled = false; }
+  };
+}
+function refundModal(id){
+  const b = S.bookings[id]; if (!b || !b.advance || !isAdmin()) return;
+  openModal(`<h3>Refund — ${esc(b.name)}</h3>
+    <div class="rows" style="margin-bottom:12px"><div><span>Booking</span><b>${prettyDate(b.date)} · ${hm12(b.time)} · ${esc(b.table)}</b></div><div><span>Advance received</span><b>${money(b.advance.amount)} · ${esc(b.advance.method)}</b></div></div>
+    <div class="row2"><label>Refund amount<input id="rf_amt" type="number" min="1" max="${esc(b.advance.amount)}" inputmode="numeric" value="${esc(b.advance.amount)}"></label>
+      <label>Refund from<select id="rf_m"><option ${b.advance.method !== 'Cash' ? 'selected' : ''}>Online</option><option ${b.advance.method === 'Cash' ? 'selected' : ''}>Cash</option></select></label></div>
+    <p class="mute sm" style="margin:-4px 0 12px">The booking will be cancelled and the refund will be subtracted from today's sales.</p>
+    <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn danger" id="rf_go">Refund &amp; cancel booking</button></div>`);
+  $('#rf_go').onclick = async () => {
+    const amt = +$('#rf_amt').value || 0, method = $('#rf_m').value;
+    if (amt <= 0 || amt > +b.advance.amount) return toast('Refund must be between 1 and ' + money(b.advance.amount), 1);
+    const btn = $('#rf_go'); btn.disabled = true; const key = DB.key(), up = {};
+    up['sessions/' + key] = moneyEntry({label:'Booking refund', type:'Refund', name:b.name, bookingId:id, amount:-amt, method});
+    up[`bookings/${id}/refund`] = {amount:amt, method, at:DB.now(), by:S.role, sid:key}; up[`bookings/${id}/status`] = 'cancelled'; up[`slots/${b.date}/${id}`] = null;
+    try { await DB.update('', up); closeModal(); waModal(id, 'cancelled'); } catch(e) { toast(e.message, 1); btn.disabled = false; }
+  };
+}
+const msgDate = s => prettyDate(s).replace(',', '');
 function waMsg(b, st){
-  const c = S.settings.clubName;
-  if (st === 'approved') return `Assalam o Alaikum ${b.name}! ✅\nYour booking at *${c}* is CONFIRMED.\n\n📅 ${prettyDate(b.date)}\n⏰ ${hm12(b.time)} (${b.hours} hr)\n🎱 ${b.table}\n💰 ${money(b.amount)}\n\nPlease arrive 10 minutes early. See you!`;
-  if (st === 'rejected') return `Assalam o Alaikum ${b.name},\nSorry, we could not confirm your booking at *${c}* for ${prettyDate(b.date)}, ${hm12(b.time)}.\nPlease contact us to choose another slot.`;
+  const c = S.settings.clubName, adv = b.advance ? +b.advance.amount || 0 : 0;
+  if (st === 'approved') return `Assalam o Alaikum ${b.name}! 😎\nYour booking at *${c}* is CONFIRMED.\n\n📅 ${msgDate(b.date)}\n⏲️ ${hm12(b.time)} (${b.hours} hr)\n🎱 ${b.table}\n💶 ${money(b.amount)}${adv && adv !== +b.amount ? `\n✅ Advance received: ${money(adv)}` : ''}\n\n- Please arrive 10 minutes early. See you!`;
+  if (st === 'rejected') return `Assalam o Alaikum ${b.name} 🙏\nSorry, we could not confirm your booking at *${c}* for ${msgDate(b.date)}, ${hm12(b.time)}.\n\n- Please contact us to choose another slot.`;
+  if (st === 'cancelled') return `Assalam o Alaikum ${b.name} 🙏\nYour booking at *${c}* for ${msgDate(b.date)}, ${hm12(b.time)} has been cancelled.${b.refund ? `\n\n💶 Refund: ${money(b.refund.amount)} (${b.refund.method})` : ''}\n\n- Hope to see you soon! 🎱`;
   return `Assalam o Alaikum ${b.name}, we have received your booking request at *${c}* and will confirm shortly.`;
 }
 function waModal(id, st){
   const b = S.bookings[id]; if (!b) return; st = st || b.status;
-  const msg = waMsg(b, st), href = `https://wa.me/${waNum(b.phone)}?text=${encodeURIComponent(msg)}`;
+  const msg = waMsg(b, st);
   openModal(`<h3>WhatsApp ${esc(b.name)}</h3><pre class="msg">${esc(msg)}</pre>
-    <div class="mact"><button class="btn" onclick="closeModal()">Close</button>
-    <a class="btn primary" href="${href}" target="_blank" rel="noopener" onclick="setTimeout(closeModal,300)">Open WhatsApp</a></div>`);
+    <div class="mact"><button class="btn" onclick="closeModal()">Close</button><button class="btn" id="wa_copy">Copy message</button>
+    <a class="btn primary" href="${waLink(b.phone, msg)}" target="_blank" rel="noopener" onclick="setTimeout(closeModal,300)">Open WhatsApp</a></div>`);
+  $('#wa_copy').onclick = () => copyText(msg, 'Message');
 }
 async function viewShot(id){
   openModal(`<h3>Payment proof</h3><div id="shotBox" class="empty">Loading…</div><div class="mact"><button class="btn" onclick="closeModal()">Close</button></div>`);
@@ -638,8 +741,8 @@ async function loadSales(){
 async function delSession(id){ if (!confirm('Delete this sale entry?')) return; try { await DB.remove('sessions/' + id); toast('Deleted'); loadSales(); } catch(e) { toast(e.message, 1); } }
 function exportCSV(){
   const rows = S.salesRows || []; if (!rows.length) return toast('Nothing to export', 1);
-  const head = ['Date','Table','Players','Start','End','Minutes','Game','Canteen','Bill','Cash','Online','Received','Discount','By'];
-  const lines = [head, ...rows.slice().reverse().map(r => { const x = sv(r); return [r.date, r.table, playersOf(r), fmtTime(r.start), fmtTime(r.end), r.minutes, r.game ?? '', x.cant, x.bill, x.cash, x.onl, x.rec, x.disc, r.by]; })]
+  const head = ['Date','Table','Players','Start','End','Minutes','Game','Canteen','Bill','Advance used','Cash','Online','Received','Discount','By'];
+  const lines = [head, ...rows.slice().reverse().map(r => { const x = sv(r); return [r.date, r.table, playersOf(r), fmtTime(r.start), fmtTime(r.end), r.minutes, r.game ?? '', x.cant, x.bill, r.advance || '', x.cash, x.onl, x.rec, x.disc, r.by]; })]
     .map(a => a.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(','));
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], {type:'text/csv'}));
   a.download = `cueball_sales_${S.from}_to_${S.to}.csv`; document.body.appendChild(a); a.click(); a.remove();
@@ -649,8 +752,7 @@ function exportCSV(){
 function viewSettings(){
   const s = S.settings;
   return `<div class="card"><h4>Club</h4>
-    <div class="row2"><label>Club name<input id="s_name" value="${esc(s.clubName)}"></label>
-    <label>Club WhatsApp number<input id="s_wa" value="${esc(s.whatsapp)}" placeholder="03xx xxxxxxx"></label></div>
+    <label>Club WhatsApp number<input id="s_wa" value="${esc(s.whatsapp)}" placeholder="03xx xxxxxxx"></label>
     <div class="row2"><label>Opening time<input type="time" id="s_open" value="${esc(s.openTime)}"></label><label>Closing time<input type="time" id="s_close" value="${esc(s.closeTime)}"></label></div>
     <div class="row2"><label>Business day starts at (hour 0–23)<input type="number" id="s_dsh" min="0" max="23" value="${esc(s.dayStartHour)}"></label>
     <label>Round game bill up to nearest (${CURRENCY}, 0 = off)<input type="number" id="s_round" min="0" value="${esc(s.roundTo)}"></label></div>
@@ -663,14 +765,22 @@ function viewSettings(){
     <label>Note for customers<textarea id="s_note" rows="2">${esc(s.bookingNote)}</textarea></label>
     <label>Booking page link<div class="linkbox"><input readonly value="${esc(bookUrl())}"><button class="btn sm" onclick="copyText(bookUrl())">Copy</button></div></label>
     <button class="btn primary" onclick="saveSettings()">Save settings</button></div>
+  <div class="card"><h4>Peak hours</h4>
+    <p class="mute sm" style="margin-bottom:10px">Peak rate applies in these hours. Time after midnight counts in the previous day (e.g. Friday 6 PM – 2 AM ends on Saturday 2 AM).</p>
+    <div class="scroll"><table class="list peak"><thead><tr><th>Day</th><th>Peak</th><th>All day</th><th>From</th><th>To</th></tr></thead><tbody>
+    ${[1,2,3,4,5,6,0].map(d => { const c = peakCfg()[d] || {}; return `<tr><td>${DAYS[d]}</td><td><input type="checkbox" id="pk_on_${d}" ${c.on ? 'checked' : ''}></td>
+      <td><input type="checkbox" id="pk_all_${d}" ${c.all ? 'checked' : ''}></td><td><input type="time" id="pk_from_${d}" value="${esc(c.from || '18:00')}"></td><td><input type="time" id="pk_to_${d}" value="${esc(c.to || '02:00')}"></td></tr>`; }).join('')}
+    </tbody></table></div><button class="btn primary" style="margin-top:12px" onclick="saveSettings()">Save settings</button></div>
   <div class="card"><div class="cardhead"><h4>Tables</h4><button class="btn sm primary" onclick="editTable()">+ Add table</button></div><div id="tblAdmin"></div></div>
-  <div class="card"><div class="cardhead"><h4>Canteen items</h4><button class="btn sm primary" onclick="editItem()">+ Add item</button></div><div id="cntAdmin"></div></div>`;
+  <div class="card"><div class="cardhead"><h4>Canteen items</h4><button class="btn sm primary" onclick="editItem()">+ Add item</button></div><div id="cntAdmin"></div></div>
+  <p class="gift">Gift for Waqar Alam, from Osama Junaid &amp; Zaid Junaid</p>`;
 }
 async function saveSettings(){
-  const v = {clubName:$('#s_name').value.trim() || DEF.clubName, whatsapp:$('#s_wa').value.trim(), openTime:$('#s_open').value || DEF.openTime,
+  const v = {clubName:DEF.clubName, whatsapp:$('#s_wa').value.trim(), openTime:$('#s_open').value || DEF.openTime,
     closeTime:$('#s_close').value || DEF.closeTime, dayStartHour:Math.min(23, Math.max(0, +$('#s_dsh').value || 0)), roundTo:Math.max(0, +$('#s_round').value || 0),
     bookingOpen:$('#s_bopen').checked, requireScreenshot:$('#s_req').checked, payTitle:$('#s_pt').value.trim(), payBank:$('#s_pb').value.trim(),
-    payNumber:$('#s_pn').value.trim(), bookingNote:$('#s_note').value.trim()};
+    payNumber:$('#s_pn').value.trim(), bookingNote:$('#s_note').value.trim(), peak:{}};
+  for (let d = 0; d < 7; d++) v.peak[d] = {on:$('#pk_on_' + d).checked, all:$('#pk_all_' + d).checked, from:$('#pk_from_' + d).value || '18:00', to:$('#pk_to_' + d).value || '02:00'};
   try { await DB.update('settings', v); toast('Settings saved'); } catch(e) { toast(e.message, 1); }
 }
 function renderTablesAdmin(){
@@ -681,15 +791,16 @@ function renderTablesAdmin(){
     </tbody></table></div>` : `<div class="empty">No tables yet.</div>`;
 }
 function editTable(id){
-  const t = id ? S.tables[id] : {name:'', type:'Snooker', ppm:10};
+  const t = id ? S.tables[id] : {name:'', type:'Snooker', ppm:8, ppmPeak:10};
   openModal(`<h3>${id ? 'Edit' : 'Add'} table</h3>
     <label>Name<input id="t_name" value="${esc(t.name)}" placeholder="Table 1" autofocus></label>
     <label>Type<input id="t_type" value="${esc(t.type)}" list="t_types"><datalist id="t_types"><option>Snooker</option><option>8-Ball Pool</option><option>PS5</option></datalist></label>
-    <label>Rate per minute (${CURRENCY})<input id="t_rate" type="number" min="0" step="0.01" value="${esc(+ppmOf(t).toFixed(2))}" inputmode="decimal"></label>
-    <p class="mute sm" style="margin:-6px 0 12px">Example: 10 → 1 hour = ${CURRENCY} 600</p>
+    <div class="row2"><label>Off-peak rate / min (${CURRENCY})<input id="t_rate" type="number" min="0" step="0.01" value="${esc(nfmt(ppmOf(t)))}" inputmode="decimal"></label>
+    <label>Peak rate / min (${CURRENCY})<input id="t_peak" type="number" min="0" step="0.01" value="${esc(nfmt(ppmPeakOf(t)))}" inputmode="decimal"></label></div>
+    <p class="mute sm" style="margin:-6px 0 12px">Example: 10 per min = ${CURRENCY} 600 per hour. Peak hours are set in Settings → Peak hours.</p>
     <div class="mact"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="t_save">Save</button></div>`);
   $('#t_save').onclick = async () => {
-    const v = {name:$('#t_name').value.trim(), type:$('#t_type').value.trim() || 'Snooker', ppm:+$('#t_rate').value || 0, rate:null};
+    const v = {name:$('#t_name').value.trim(), type:$('#t_type').value.trim() || 'Snooker', ppm:+$('#t_rate').value || 0, ppmPeak:$('#t_peak').value === '' ? +$('#t_rate').value || 0 : +$('#t_peak').value || 0, rate:null};
     if (!v.name) return toast('Enter a table name', 1);
     try {
       if (id) await DB.update('tables/' + id, v);
@@ -736,7 +847,7 @@ function renderBook(){
   const hero = `<div class="hero"><div class="logo big"></div><h1 class="clubName">${esc(s.clubName)}</h1><p>Book your table online</p></div>`;
   if (!s.bookingOpen || !tables.length) {
     $('#app').innerHTML = `${themeBtn('float')}<div class="bookwrap">${hero}<div class="card" style="text-align:center"><p>${!tables.length ? 'Tables are not set up yet. Please check back soon.' : 'Online booking is closed right now.'}</p>
-      ${s.whatsapp ? `<a class="btn gold" style="margin-top:12px" href="https://wa.me/${waNum(s.whatsapp)}" target="_blank" rel="noopener">Contact us on WhatsApp</a>` : ''}</div></div>`; return;
+      ${s.whatsapp ? `<a class="btn gold" style="margin-top:12px" href="${waLink(s.whatsapp)}" target="_blank" rel="noopener">Contact us on WhatsApp</a>` : ''}</div></div>`; return;
   }
   $('#app').innerHTML = `${themeBtn('float')}<div class="bookwrap">${hero}<form id="bf" class="card">
     <div class="row2"><label>Your name*<input id="b_name" required maxlength="40" autocomplete="name"></label>
@@ -752,13 +863,19 @@ function renderBook(){
     ${s.bookingNote ? `<p class="mute sm" style="margin-bottom:12px">${esc(s.bookingNote)}</p>` : ''}
     <button class="btn gold full" id="b_btn">Send booking request</button></form>
     <p class="foot">Staff? <a href="#/">Login here</a></p></div>`;
-  ['b_table','b_date','b_hours'].forEach(i => $('#' + i).onchange = refreshSlots);
+  ['b_table','b_date','b_hours'].forEach(i => $('#' + i).onchange = refreshSlots); $('#b_time').onchange = updEst;
   $('#bf').onsubmit = submitBooking;
   refreshSlots();
 }
+function updEst(){
+  const t = S.tables[$('#b_table').value], date = $('#b_date').value, time = $('#b_time').value, hrs = +$('#b_hours').value;
+  if (!t) return $('#b_est').textContent = '—';
+  if (!date || !time) return $('#b_est').textContent = hasPeak(t) ? 'Select time' : money(roundBill(amtOf(hrs * 60, ppmOf(t))));
+  const s = bookTs({date, time}); $('#b_est').textContent = money(roundBill(priceSegs(t, [[s, s + hrs * 3600000]]).amount));
+}
 async function refreshSlots(){
   const s = S.settings, sel = $('#b_time'), date = $('#b_date').value, tid = $('#b_table').value, hrs = +$('#b_hours').value, t = S.tables[tid];
-  $('#b_est').textContent = t ? money(roundBill(amtOf(hrs * 60, ppmOf(t)))) : '—';
+  updEst();
   if (!date) { sel.innerHTML = '<option value="">Select a date first</option>'; return; }
   sel.innerHTML = '<option value="">Loading…</option>';
   let taken = {}; try { taken = (await DB.get('slots/' + date)) || {}; } catch(e) {}
@@ -774,6 +891,7 @@ async function refreshSlots(){
     opts += `<option value="${hh}" ${clash ? 'disabled' : ''}>${hm12(hh)}${clash ? ' — booked' : ''}</option>`;
   }
   sel.innerHTML = any ? '<option value="">Select time</option>' + opts : '<option value="">No slots available — try another date</option>';
+  updEst();
 }
 function compress(file){
   return new Promise((res, rej) => { const img = new Image(), url = URL.createObjectURL(file);
@@ -792,7 +910,7 @@ async function submitBooking(e){
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
     const shot = f ? await compress(f) : null, id = DB.key();
-    const bk = {name, phone, date, time, hours, tableId:tid, table:t.name, type:t.type, ppm:ppmOf(t), amount:roundBill(amtOf(hours * 60, ppmOf(t))),
+    const bk = {name, phone, date, time, hours, tableId:tid, table:t.name, type:t.type, ppm:ppmOf(t), ppmPeak:ppmPeakOf(t), amount:roundBill(priceSegs(t, [[bookTs({date, time}), bookTs({date, time}) + hours * 3600000]]).amount),
       note:$('#b_note').value.trim(), status:'pending', createdAt:DB.now(), hasShot:!!shot};
     await DB.set('bookings/' + id, bk);
     if (shot) await DB.set('shots/' + id, shot);
@@ -806,7 +924,7 @@ function renderBooked(b, id){
     <p>We'll confirm on WhatsApp after checking your payment.</p></div>
     <div class="card"><div class="rows"><div><span>Reference</span><b>${ref}</b></div><div><span>Table</span><b>${esc(b.table)}</b></div>
     <div><span>Date</span><b>${prettyDate(b.date)}</b></div><div><span>Time</span><b>${hm12(b.time)} · ${b.hours} hr</b></div><div><span>Amount</span><b>${money(b.amount)}</b></div></div></div>
-    ${s.whatsapp ? `<a class="btn gold full" href="https://wa.me/${waNum(s.whatsapp)}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Message us on WhatsApp</a>` : ''}
+    ${s.whatsapp ? `<a class="btn gold full" href="${waLink(s.whatsapp, txt)}" target="_blank" rel="noopener">Message us on WhatsApp</a>` : ''}
     <button class="btn full" style="margin-top:10px" onclick="location.reload()">Book another table</button></div>`;
 }
 
