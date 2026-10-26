@@ -862,7 +862,7 @@ function renderBook(){
     <label>Note (optional)<textarea id="b_note" rows="2" maxlength="200"></textarea></label>
     ${s.bookingNote ? `<p class="mute sm" style="margin-bottom:12px">${esc(s.bookingNote)}</p>` : ''}
     <button class="btn gold full" id="b_btn">Send booking request</button></form>
-    <p class="foot">Staff? <a href="#/">Login here</a></p></div>`;
+</div>`;
   ['b_table','b_date','b_hours'].forEach(i => $('#' + i).onchange = refreshSlots); $('#b_time').onchange = updEst;
   $('#bf').onsubmit = submitBooking;
   refreshSlots();
